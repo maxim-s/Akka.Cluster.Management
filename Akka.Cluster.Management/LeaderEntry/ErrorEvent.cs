@@ -3,12 +3,18 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
+using Akka.Actor;
 
 namespace Akka.Cluster.Management.LeaderEntry
 {
-    public enum LeaderEntryState
+    public class ErrorEvent
     {
-        Idle,
-        AwaitingReply
+        public ErrorStatus Status { get; set; }
+    }
+
+    public enum ErrorStatus
+    {
+        TestFailed,
+        KeyNotFound
     }
 }
