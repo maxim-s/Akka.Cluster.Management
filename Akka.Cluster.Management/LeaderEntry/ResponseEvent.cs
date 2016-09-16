@@ -6,9 +6,8 @@ using System.Threading.Tasks;
 
 namespace Akka.Cluster.Management.LeaderEntry
 {
-    public enum LeaderEntryState
+    public class ResponseEvent
     {
-        Idle,
-        AwaitingReply
+
     }
 }

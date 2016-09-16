@@ -6,7 +6,18 @@ using System.Threading.Tasks;
 
 namespace Akka.Cluster.Management.LeaderEntry
 {
-    public interface ILeaderEntryData
+    public class LeaderEntryData
     {
+        public LeaderEntryData()
+        {
+            
+        }
+
+        public LeaderEntryData(bool assumeEntryExists)
+        {
+            AssumeEntryExists = assumeEntryExists;
+        }
+
+        public bool AssumeEntryExists { get; set; }
     }
 }
