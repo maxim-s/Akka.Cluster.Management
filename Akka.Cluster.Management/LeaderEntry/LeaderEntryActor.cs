@@ -30,15 +30,14 @@ namespace Akka.Cluster.Management.LeaderEntry
                         CreateLeaderEntry();
                     }
                 }
-                GoTo(LeaderEntryState.AwaitingReply);
-                return null;
+                return GoTo(LeaderEntryState.AwaitingReply);
             });
 
             When(LeaderEntryState.AwaitingReply, @event =>
             {
                 if (@event.FsmEvent is ResponseEvent)
                 {
-                    GoTo(LeaderEntryState.Idle).Using(new LeaderEntryData (true)).ForMax(new TimeSpan(refreshInterval));
+                    return GoTo(LeaderEntryState.Idle).Using(new LeaderEntryData (true)).ForMax(new TimeSpan(refreshInterval));
                 }
 
                 var errorEvent = @event.FsmEvent as ErrorEvent;
@@ -46,22 +45,20 @@ namespace Akka.Cluster.Management.LeaderEntry
                 {
                     if (errorEvent.Status == ErrorStatus.KeyNotFound || errorEvent.Status == ErrorStatus.TestFailed)
                     {
-                        GoTo(LeaderEntryState.Idle)
+                        return GoTo(LeaderEntryState.Idle)
                             .Using(new LeaderEntryData(false))
                             .ForMax(new TimeSpan(refreshInterval));
                     }
-                    else
-                    {
-                        // TODO: log
-                        GoTo(LeaderEntryState.Idle)
-                            .Using(new LeaderEntryData(@event.StateData.AssumeEntryExists))
-                            .ForMax(new TimeSpan(_settings.RetryDelay));
-                    }
+                    
+                    // TODO: log
+                    return GoTo(LeaderEntryState.Idle)
+                        .Using(new LeaderEntryData(@event.StateData.AssumeEntryExists))
+                        .ForMax(new TimeSpan(_settings.RetryDelay));
                 }
 
                 if (@event.FsmEvent is Status.Failure)
                 {
-                    GoTo(LeaderEntryState.Idle)
+                    return GoTo(LeaderEntryState.Idle)
                         .Using(new LeaderEntryData(@event.StateData.AssumeEntryExists))
                         .ForMax(new TimeSpan(_settings.RetryDelay));
                 }
