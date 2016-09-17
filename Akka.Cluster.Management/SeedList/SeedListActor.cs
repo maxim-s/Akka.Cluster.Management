@@ -1,4 +1,3 @@
-using System.Collections.Generic;
 using System.Collections.Immutable;
 using Akka.Actor;
 
@@ -13,6 +12,24 @@ namespace Akka.Cluster.Management.SeedList
         {
             _client = client;
             _settings = settings;
+
+            var stash = Context.CreateStash(this.GetType());
+
+            When(SeedListState.AwaitingInitialState, @event =>
+            {
+                var fsmEvent = @event.FsmEvent as InitialState;
+                if (fsmEvent != null)
+                {
+                    // TODO: etcd(_.get(settings.seedsPath, recursive = true, sorted = false))
+                    return GoTo(SeedListState.AwaitingRegisteredSeeds).Using(new AwaitingRegisteredSeedsData(fsmEvent.Members));
+                }
+                if (@event.FsmEvent is MemberAdded || @event.FsmEvent is MemberRemoved)
+                {
+                    stash.Stash();
+                    return Stay();
+                }
+                return null;
+            });
         }
     }
 
@@ -20,7 +37,10 @@ namespace Akka.Cluster.Management.SeedList
     {
         public InitialState(IImmutableSet<string> members)
         {
+            Members = members;
         }
+
+        public IImmutableSet<string> Members { get; }
     }
 
     interface ICommand
