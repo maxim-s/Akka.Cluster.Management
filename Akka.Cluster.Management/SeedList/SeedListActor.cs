@@ -30,6 +30,37 @@ namespace Akka.Cluster.Management.SeedList
                 }
                 return null;
             });
+
+            When(SeedListState.AwaitingCommand, @event =>
+            {
+                var memberAdded = @event.FsmEvent as MemberAdded;
+                var commandData = @event.StateData as AwaitingCommandData;
+                if (memberAdded != null && commandData != null)
+                {
+                    // TODO: Implement adding new seedpath to service dicsovery client. example: etcd(_.create(settings.seedsPath, address))
+                    return
+                        GoTo(SeedListState.AwaitingEtcdReply)
+                            .Using(new AwaitingReplyData(memberAdded, commandData.AddressMapping));
+                }
+
+                var memberRemoved = @event.FsmEvent as MemberRemoved;
+                commandData = @event.StateData as AwaitingCommandData;
+                if (memberRemoved != null && commandData != null)
+                {
+                    string addressMapping;
+                    if (commandData.AddressMapping.TryGetValue(memberRemoved.Member, out addressMapping))
+                    {
+                        // TODO: Implement deleting seedpath from service dicsovery client. Example: etcd(_.delete(key, recursive = false))
+                        return
+                            GoTo(SeedListState.AwaitingEtcdReply)
+                                .Using(new AwaitingReplyData(memberRemoved, commandData.AddressMapping));
+                    }
+
+                    return Stay();
+                }
+
+                return null;
+            });
         }
     }
 
