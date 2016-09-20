@@ -27,7 +27,7 @@ namespace Akka.Cluster.Management
                 }
                 if (@event.FsmEvent is Election || @event.FsmEvent is Error)
                 {
-                    GoTo(ClusterDiscoveryActorState.Election);
+                    return GoTo(ClusterDiscoveryActorState.Election);
                 }
                 return null;
             } );
@@ -40,7 +40,7 @@ namespace Akka.Cluster.Management
                 }
                 if (@event.FsmEvent is Error)
                 {
-                    GoTo(ClusterDiscoveryActorState.Follower);
+                    return GoTo(ClusterDiscoveryActorState.Follower);
                 }
                 return null;
             });
