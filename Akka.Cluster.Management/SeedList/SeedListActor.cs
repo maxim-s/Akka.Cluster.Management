@@ -1,4 +1,5 @@
 using System.Collections.Immutable;
+using System.Diagnostics.Eventing.Reader;
 using Akka.Actor;
 
 namespace Akka.Cluster.Management.SeedList
@@ -61,7 +62,97 @@ namespace Akka.Cluster.Management.SeedList
 
                 return null;
             });
+
+            When(SeedListState.AwaitingEtcdReply, @event =>
+            {
+                var etcdResponse = @event.FsmEvent as EtcdResponse;
+                var state = @event.StateData as AwaitingReplyData;
+                if (etcdResponse != null && state != null)
+                {
+                    if (etcdResponse.Key == "create" && etcdResponse.Node != null)
+                    {
+                        stash.UnstashAll();
+                        return
+                            GoTo(SeedListState.AwaitingCommand)
+                                .Using(
+                                    new AwaitingCommandData(
+                                        state.AdressMapping.ToImmutableDictionary()
+                                            .Add(etcdResponse.Node.Address, etcdResponse.Key)));
+                    }
+
+                    if (etcdResponse.Key == "delete" && etcdResponse.PrevNode != null)
+                    {
+                        stash.UnstashAll();
+                        return
+                            GoTo(SeedListState.AwaitingCommand)
+                                .Using(
+                                    new AwaitingCommandData(
+                                        state.AdressMapping.ToImmutableDictionary()
+                                            .Remove(etcdResponse.PrevNode.Address)));
+                    }
+                }
+
+                var etcdError = @event.FsmEvent as EtcdError;
+                if (etcdError != null && state != null)
+                {
+                    // TODO: Log warning 
+                    RetryMessage(state.Command);
+                    stash.UnstashAll();
+                    return GoTo(SeedListState.AwaitingCommand)
+                            .Using(new AwaitingCommandData(state.AdressMapping));
+                }
+
+                var failure = @event.FsmEvent as Failure;
+                if (failure != null && state != null)
+                {
+                    // TODO: Log warning 
+                    RetryMessage(state.Command);
+                    stash.UnstashAll();
+                    return GoTo(SeedListState.AwaitingCommand)
+                            .Using(new AwaitingCommandData(state.AdressMapping));
+                }
+
+                if (@event.FsmEvent is MemberAdded || @event.FsmEvent is MemberRemoved)
+                {
+                    stash.Stash();
+                    return Stay();
+                }
+
+                return null;
+            });
+
+            StartWith(SeedListState.AwaitingInitialState, new AwaitingInitialStateData());
+            Initialize();
         }
+
+        private void RetryMessage(ICommand command)
+        {
+            throw new System.NotImplementedException();
+        }
+    }
+
+    public class EtcdError
+    {
+        
+    }
+
+    public class Failure
+    {
+        
+    }
+
+    public class EtcdResponse
+    {
+        public string Key { get; set; }
+
+        public EtcdNode Node { get; set; }
+
+        public EtcdNode PrevNode { get; set; }
+    }
+
+    public class EtcdNode
+    {
+        public string Address { get; set; }
     }
 
     public class InitialState
