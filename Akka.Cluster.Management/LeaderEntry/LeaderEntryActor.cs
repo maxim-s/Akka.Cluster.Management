@@ -15,7 +15,7 @@ namespace Akka.Cluster.Management.LeaderEntry
             _client = client;
             _settings = settings;
 
-            var refreshInterval = settings.LeaderEntryTTL / 2;
+            var refreshInterval = TimeSpan.FromMilliseconds(_settings.LeaderEntryTTL.TotalMilliseconds / 2);
 
             When(LeaderEntryState.Idle, @event =>
             {
@@ -37,7 +37,7 @@ namespace Akka.Cluster.Management.LeaderEntry
             {
                 if (@event.FsmEvent is ResponseEvent)
                 {
-                    return GoTo(LeaderEntryState.Idle).Using(new LeaderEntryData (true)).ForMax(new TimeSpan(refreshInterval));
+                    return GoTo(LeaderEntryState.Idle).Using(new LeaderEntryData (true)).ForMax(refreshInterval);
                 }
 
                 var errorEvent = @event.FsmEvent as ErrorEvent;
@@ -47,37 +47,49 @@ namespace Akka.Cluster.Management.LeaderEntry
                     {
                         return GoTo(LeaderEntryState.Idle)
                             .Using(new LeaderEntryData(false))
-                            .ForMax(new TimeSpan(refreshInterval));
+                            .ForMax(refreshInterval);
                     }
                     
                     // TODO: log
                     return GoTo(LeaderEntryState.Idle)
                         .Using(new LeaderEntryData(@event.StateData.AssumeEntryExists))
-                        .ForMax(new TimeSpan(_settings.RetryDelay));
+                        .ForMax(_settings.RetryDelay);
                 }
 
                 if (@event.FsmEvent is Status.Failure)
                 {
                     return GoTo(LeaderEntryState.Idle)
                         .Using(new LeaderEntryData(@event.StateData.AssumeEntryExists))
-                        .ForMax(new TimeSpan(_settings.RetryDelay));
+                        .ForMax(_settings.RetryDelay);
                 }
                 return null;
             });
 
-            StartWith(LeaderEntryState.Idle, new LeaderEntryData(true), new TimeSpan(refreshInterval));
+            StartWith(LeaderEntryState.Idle, new LeaderEntryData(true), refreshInterval);
             Initialize();
         }
 
 
+        /// <summary>
+        /// Create the leader entry, assuming it does not exist.
+        /// 
+        /// This method is used when the leader entry has expired while the leader node was unable to reach etcd, or when
+        /// the leader entry was hijacked by another node.System operator will eventually shut down one of the contending
+        ///  leaders, and if the current node prevails it will reclaim the leader entry after it expires.
+        /// </summary>
         private void CreateLeaderEntry()
         {
-            throw new NotImplementedException();
+            _client.CompareAndSet(_settings.LeaderPath, _address, _settings.LeaderEntryTTL);
         }
 
+        /// <summary>
+        /// Refresh the entry at leader path, assuming that it exists and the current value is our node's address.
+        /// 
+        /// This method is used during the normal refresh cycle.
+        /// </summary>
         private void RefreshLeaderEntry()
         {
-            throw new NotImplementedException();
+            _client.CompareAndSet(_settings.LeaderPath, _address, _settings.LeaderEntryTTL);
         }
     }
 }

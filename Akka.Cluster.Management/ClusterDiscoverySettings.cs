@@ -1,9 +1,16 @@
+using System;
+
 namespace Akka.Cluster.Management
 {
     public class ClusterDiscoverySettings
     {
-        public long LeaderEntryTTL;
+        public TimeSpan LeaderEntryTTL { get; set; }
 
-        public long RetryDelay { get; set; }
+        public TimeSpan RetryDelay { get; set; }
+
+        public string LeaderPath { get; }
+
+        public TimeSpan SeedsJoinTimeout { get; set; }
+        public TimeSpan SeedsFetchTimeout { get; set; }
     }
 }
