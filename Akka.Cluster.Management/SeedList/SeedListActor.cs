@@ -1,5 +1,8 @@
+using System;
+using System.Collections.Generic;
 using System.Collections.Immutable;
 using System.Diagnostics.Eventing.Reader;
+using System.Linq;
 using Akka.Actor;
 
 namespace Akka.Cluster.Management.SeedList
@@ -29,6 +32,82 @@ namespace Akka.Cluster.Management.SeedList
                     stash.Stash();
                     return Stay();
                 }
+                return null;
+            });
+
+            When(SeedListState.AwaitingRegisteredSeeds, @event =>
+            {
+                var fsmEvent = @event.FsmEvent as EtcdResponse;
+                var state = @event.StateData as AwaitingRegisteredSeedsData;
+                if (fsmEvent.Key == "get" && fsmEvent.Node != null)
+                {
+                    var seeds = fsmEvent.Node.Nodes;
+                    if (seeds == null)
+                    {
+                        stash.UnstashAll();
+                        return
+                            GoTo(SeedListState.AwaitingCommand)
+                                .Using(new AwaitingCommandData(ImmutableDictionary<string, string>.Empty));
+                    }
+                    else
+                    {
+                        var currentSeeds = state.Members;
+                        var registeredSeeds = seeds.Select(v => v.Value).ToImmutableHashSet();
+
+                        foreach (var member in currentSeeds.Except(registeredSeeds))
+                        {
+                            Self.Tell(new MemberAdded(member));
+                        }
+
+                        foreach (var member in registeredSeeds.Except(currentSeeds))
+                        {
+                            Self.Tell(new MemberRemoved(member));
+                        }
+
+                        var addressMapping = seeds.ToDictionary(node => node.Value, node => node.Key);
+                        stash.UnstashAll();
+                        return GoTo(SeedListState.AwaitingCommand).Using(new AwaitingCommandData(addressMapping));
+                    }
+                }
+
+                var etcdError = @event.FsmEvent as EtcdError;
+                if (etcdError != null && etcdError.EtcdErrorType == EtcdErrorType.KeyNotFound)
+                {
+                    foreach (var member in state.Members)
+                    {
+                        Self.Tell(new MemberAdded(member));
+                    }
+
+                    stash.UnstashAll();
+                    return
+                        GoTo(SeedListState.AwaitingCommand)
+                            .Using(new AwaitingCommandData(new Dictionary<string, string>()));
+                }
+
+                if (etcdError != null && state != null)
+                {
+                    // TODO: Log warning 
+                    RetryMessage(new InitialState(state.Members));
+                    return GoTo(SeedListState.AwaitingCommand)
+                            .Using(new AwaitingInitialStateData());
+                }
+
+                var failure = @event.FsmEvent as Failure;
+                if (failure != null && state != null)
+                {
+                    // TODO: Log warning 
+                    RetryMessage(new InitialState(state.Members));
+                    stash.UnstashAll();
+                    return GoTo(SeedListState.AwaitingCommand)
+                            .Using(new AwaitingInitialStateData());
+                }
+
+                if (@event.FsmEvent is MemberAdded || @event.FsmEvent is MemberRemoved)
+                {
+                    stash.Stash();
+                    return Stay();
+                }
+
                 return null;
             });
 
@@ -125,15 +204,20 @@ namespace Akka.Cluster.Management.SeedList
             Initialize();
         }
 
-        private void RetryMessage(ICommand command)
+        private void RetryMessage(object msg)
         {
-            throw new System.NotImplementedException();
+            Context.System.Scheduler.ScheduleTellOnce(TimeSpan.FromMilliseconds(_settings.RetryDelay.TotalMilliseconds), Self, msg, Self);
         }
+    }
+
+    public enum EtcdErrorType
+    {
+        KeyNotFound
     }
 
     public class EtcdError
     {
-        
+        public EtcdErrorType EtcdErrorType { get; set; }
     }
 
     public class Failure
@@ -153,6 +237,12 @@ namespace Akka.Cluster.Management.SeedList
     public class EtcdNode
     {
         public string Address { get; set; }
+
+        public string Value { get; set; }
+
+        public ImmutableList<EtcdNode> Nodes { get; set; }
+
+        public string Key { get; set; }
     }
 
     public class InitialState
