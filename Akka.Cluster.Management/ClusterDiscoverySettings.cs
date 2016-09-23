@@ -4,6 +4,8 @@ namespace Akka.Cluster.Management
 {
     public class ClusterDiscoverySettings
     {
+        public string SeedsPath { get; set; }
+
         public TimeSpan LeaderEntryTTL { get; set; }
 
         public TimeSpan RetryDelay { get; set; }
