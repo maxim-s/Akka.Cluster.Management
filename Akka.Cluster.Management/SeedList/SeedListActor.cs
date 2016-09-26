@@ -3,7 +3,9 @@ using System.Collections.Generic;
 using System.Collections.Immutable;
 using System.Diagnostics.Eventing.Reader;
 using System.Linq;
+using System.Threading.Tasks;
 using Akka.Actor;
+using Akka.Dispatch;
 
 namespace Akka.Cluster.Management.SeedList
 {
@@ -24,7 +26,7 @@ namespace Akka.Cluster.Management.SeedList
                 var fsmEvent = @event.FsmEvent as InitialState;
                 if (fsmEvent != null)
                 {
-                    // TODO: etcd(_.get(settings.seedsPath, recursive = true, sorted = false))
+                    ServiceDiscovery(cl => cl.Get(_settings.SeedsPath, true, false)).Start();
                     return GoTo(SeedListState.AwaitingRegisteredSeeds).Using(new AwaitingRegisteredSeedsData(fsmEvent.Members));
                 }
                 if (@event.FsmEvent is MemberAdded || @event.FsmEvent is MemberRemoved)
@@ -117,7 +119,7 @@ namespace Akka.Cluster.Management.SeedList
                 var commandData = @event.StateData as AwaitingCommandData;
                 if (memberAdded != null && commandData != null)
                 {
-                    // TODO: Implement adding new seedpath to service dicsovery client. example: etcd(_.create(settings.seedsPath, address))
+                    ServiceDiscovery(cl => cl.Create(_settings.SeedsPath, memberAdded.Member)).Start();
                     return
                         GoTo(SeedListState.AwaitingEtcdReply)
                             .Using(new AwaitingReplyData(memberAdded, commandData.AddressMapping));
@@ -130,6 +132,7 @@ namespace Akka.Cluster.Management.SeedList
                     string addressMapping;
                     if (commandData.AddressMapping.TryGetValue(memberRemoved.Member, out addressMapping))
                     {
+                        ServiceDiscovery(cl => cl.Delete(addressMapping, false)).Start();
                         // TODO: Implement deleting seedpath from service dicsovery client. Example: etcd(_.delete(key, recursive = false))
                         return
                             GoTo(SeedListState.AwaitingEtcdReply)
@@ -202,6 +205,12 @@ namespace Akka.Cluster.Management.SeedList
 
             StartWith(SeedListState.AwaitingInitialState, new AwaitingInitialStateData());
             Initialize();
+        }
+
+        private Task ServiceDiscovery(Func<IServiceDiscoveryClient, Task<EtcdResponse>> operation)
+        {
+            return operation(this._client)
+                .PipeTo(Self);
         }
 
         private void RetryMessage(object msg)
