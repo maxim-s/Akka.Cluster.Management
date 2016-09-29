@@ -79,6 +79,7 @@
     <Compile Include="FSMSpecBase.cs" />
     <Compile Include="LeaderEntryActorSpec.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />
+    <Compile Include="SeedListActorSpec.cs" />
   </ItemGroup>
   <ItemGroup>
     <None Include="packages.config" />
