@@ -5,6 +5,7 @@ using System.Diagnostics.Eventing.Reader;
 using System.Linq;
 using System.Threading.Tasks;
 using Akka.Actor;
+using Akka.Cluster.Management.ServiceDiscovery;
 using Akka.Dispatch;
 
 namespace Akka.Cluster.Management.SeedList
@@ -39,7 +40,7 @@ namespace Akka.Cluster.Management.SeedList
 
             When(SeedListState.AwaitingRegisteredSeeds, @event =>
             {
-                var fsmEvent = @event.FsmEvent as EtcdResponse;
+                var fsmEvent = @event.FsmEvent as Response;
                 var state = @event.StateData as AwaitingRegisteredSeedsData;
                 if (fsmEvent.Key == "get" && fsmEvent.Node != null)
                 {
@@ -72,8 +73,8 @@ namespace Akka.Cluster.Management.SeedList
                     }
                 }
 
-                var etcdError = @event.FsmEvent as EtcdError;
-                if (etcdError != null && etcdError.EtcdErrorType == EtcdErrorType.KeyNotFound)
+                var etcdError = @event.FsmEvent as ServiceDiscovery.Error;
+                if (etcdError != null && etcdError.ErrorType == ErrorType.KeyNotFound)
                 {
                     foreach (var member in state.Members)
                     {
@@ -147,7 +148,7 @@ namespace Akka.Cluster.Management.SeedList
 
             When(SeedListState.AwaitingEtcdReply, @event =>
             {
-                var etcdResponse = @event.FsmEvent as EtcdResponse;
+                var etcdResponse = @event.FsmEvent as Response;
                 var state = @event.StateData as AwaitingReplyData;
                 if (etcdResponse != null && state != null)
                 {
@@ -174,7 +175,7 @@ namespace Akka.Cluster.Management.SeedList
                     }
                 }
 
-                var etcdError = @event.FsmEvent as EtcdError;
+                var etcdError = @event.FsmEvent as ServiceDiscovery.Error;
                 if (etcdError != null && state != null)
                 {
                     // TODO: Log warning 
@@ -207,7 +208,7 @@ namespace Akka.Cluster.Management.SeedList
             Initialize();
         }
 
-        private Task ServiceDiscovery(Func<IServiceDiscoveryClient, Task<EtcdResponse>> operation)
+        private Task ServiceDiscovery(Func<IServiceDiscoveryClient, Task<Response>> operation)
         {
             return operation(this._client)
                 .PipeTo(Self);
@@ -219,39 +220,9 @@ namespace Akka.Cluster.Management.SeedList
         }
     }
 
-    public enum EtcdErrorType
-    {
-        KeyNotFound
-    }
-
-    public class EtcdError
-    {
-        public EtcdErrorType EtcdErrorType { get; set; }
-    }
-
     public class Failure
     {
         
-    }
-
-    public class EtcdResponse
-    {
-        public string Key { get; set; }
-
-        public EtcdNode Node { get; set; }
-
-        public EtcdNode PrevNode { get; set; }
-    }
-
-    public class EtcdNode
-    {
-        public string Address { get; set; }
-
-        public string Value { get; set; }
-
-        public ImmutableList<EtcdNode> Nodes { get; set; }
-
-        public string Key { get; set; }
     }
 
     public class InitialState

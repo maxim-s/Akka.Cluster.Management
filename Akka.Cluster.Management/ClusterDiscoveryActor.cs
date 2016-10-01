@@ -6,6 +6,7 @@ using System.Text;
 using System.Threading.Tasks;
 using Akka.Actor;
 using Akka.Cluster.Management.SeedList;
+using Akka.Cluster.Management.ServiceDiscovery;
 
 namespace Akka.Cluster.Management
 {

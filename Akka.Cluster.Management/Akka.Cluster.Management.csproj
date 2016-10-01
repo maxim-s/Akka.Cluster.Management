@@ -9,8 +9,9 @@
     <AppDesignerFolder>Properties</AppDesignerFolder>
     <RootNamespace>Akka.Cluster.Management</RootNamespace>
     <AssemblyName>Akka.Cluster.Management</AssemblyName>
-    <TargetFrameworkVersion>v4.5</TargetFrameworkVersion>
+    <TargetFrameworkVersion>v4.5.1</TargetFrameworkVersion>
     <FileAlignment>512</FileAlignment>
+    <TargetFrameworkProfile />
   </PropertyGroup>
   <PropertyGroup Condition=" '$(Configuration)|$(Platform)' == 'Debug|AnyCPU' ">
     <DebugSymbols>true</DebugSymbols>
@@ -77,7 +78,6 @@
     <Compile Include="ClusterDiscoverySettings.cs" />
     <Compile Include="Election.cs" />
     <Compile Include="Error.cs" />
-    <Compile Include="IServiceDiscoveryClient.cs" />
     <Compile Include="LeaderEntry\ErrorEvent.cs" />
     <Compile Include="LeaderEntry\ILeaderEntryData.cs" />
     <Compile Include="LeaderEntry\LeaderEntryActor.cs" />
@@ -97,7 +97,12 @@
   <ItemGroup>
     <None Include="packages.config" />
   </ItemGroup>
-  <ItemGroup />
+  <ItemGroup>
+    <ProjectReference Include="..\Akka.Cluster.Management.ServiceDiscovery\Akka.Cluster.Management.ServiceDiscovery.csproj">
+      <Project>{6D8E7605-B993-4711-A475-C3B597C9D000}</Project>
+      <Name>Akka.Cluster.Management.ServiceDiscovery</Name>
+    </ProjectReference>
+  </ItemGroup>
   <Import Project="$(MSBuildToolsPath)\Microsoft.CSharp.targets" />
   <!-- To modify your build process, add your task inside one of the targets below and uncomment it. 
        Other similar extension points exist, see Microsoft.Common.targets.

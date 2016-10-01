@@ -1,5 +1,6 @@
 ﻿using System;
 using Akka.Actor;
+using Akka.Cluster.Management.ServiceDiscovery;
 
 namespace Akka.Cluster.Management.LeaderEntry
 {
