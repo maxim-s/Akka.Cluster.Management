@@ -17,5 +17,6 @@ namespace Akka.Cluster.Management
 
         public TimeSpan SeedsJoinTimeout { get; set; }
         public TimeSpan SeedsFetchTimeout { get; set; }
+        public string BasePath { get; set; }
     }
 }

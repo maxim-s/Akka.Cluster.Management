@@ -42,9 +42,10 @@ namespace Akka.Cluster.Management.SeedList
             {
                 var fsmEvent = @event.FsmEvent as Response;
                 var state = @event.StateData as AwaitingRegisteredSeedsData;
-                if (fsmEvent.Key == "get" && fsmEvent.Node != null)
+                if  (@event.FsmEvent is GetNodesResponse)
                 {
-                    var seeds = fsmEvent.Node.Nodes;
+                    var resp = @event.FsmEvent as GetNodesResponse;
+                    var seeds = resp.Nodes;
                     if (seeds == null)
                     {
                         stash.UnstashAll();
@@ -148,31 +149,30 @@ namespace Akka.Cluster.Management.SeedList
 
             When(SeedListState.AwaitingEtcdReply, @event =>
             {
-                var etcdResponse = @event.FsmEvent as Response;
                 var state = @event.StateData as AwaitingReplyData;
-                if (etcdResponse != null && state != null)
+                if (@event.FsmEvent is CreateNodeResponse)
                 {
-                    if (etcdResponse.Key == "create" && etcdResponse.Node != null)
-                    {
-                        stash.UnstashAll();
-                        return
-                            GoTo(SeedListState.AwaitingCommand)
-                                .Using(
-                                    new AwaitingCommandData(
-                                        state.AdressMapping.ToImmutableDictionary()
-                                            .Add(etcdResponse.Node.Address, etcdResponse.Key)));
-                    }
+                    var resp = @event.FsmEvent as CreateNodeResponse;
+                    stash.UnstashAll();
+                    return
+                        GoTo(SeedListState.AwaitingCommand)
+                            .Using(
+                                new AwaitingCommandData(
+                                    state.AdressMapping.ToImmutableDictionary()
+                                        .Add(resp.Address, resp.Key)));
+                }
 
-                    if (etcdResponse.Key == "delete" && etcdResponse.PrevNode != null)
+                if (@event.FsmEvent is DeleteNodeResponse)
                     {
-                        stash.UnstashAll();
+                    var resp = @event.FsmEvent as DeleteNodeResponse;
+                    stash.UnstashAll();
                         return
                             GoTo(SeedListState.AwaitingCommand)
                                 .Using(
                                     new AwaitingCommandData(
                                         state.AdressMapping.ToImmutableDictionary()
-                                            .Remove(etcdResponse.PrevNode.Address)));
-                    }
+                                            .Remove(resp.Address)));
+                    
                 }
 
                 var etcdError = @event.FsmEvent as ServiceDiscovery.Error;
@@ -208,7 +208,7 @@ namespace Akka.Cluster.Management.SeedList
             Initialize();
         }
 
-        private Task ServiceDiscovery(Func<IServiceDiscoveryClient, Task<Response>> operation)
+        private Task ServiceDiscovery<T>(Func<IServiceDiscoveryClient, Task<T>> operation) where T: Response
         {
             return operation(this._client)
                 .PipeTo(Self);

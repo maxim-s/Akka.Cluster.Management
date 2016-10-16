@@ -23,7 +23,7 @@ namespace Akka.Cluster.Management
             {
                 if (@event.FsmEvent is Start)
                 {
-                    _client.Start(); 
+                    _client.Start(settings.BasePath); 
                     return Stay();
                 }
                 if (@event.FsmEvent is Election || @event.FsmEvent is Error)

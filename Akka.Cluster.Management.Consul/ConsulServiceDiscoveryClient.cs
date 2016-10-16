@@ -1,6 +1,7 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.Linq;
+using System.Net;
 using System.Security.Cryptography;
 using System.Text;
 using System.Threading.Tasks;
@@ -18,20 +19,39 @@ namespace Akka.Cluster.Management.Consul
             _consul = new ConsulClient();
         }
 
-        public Task<Response> Get(string key, bool recursive, bool sorted)
+        public Task<GetNodesResponse> Get(string key, bool recursive, bool sorted)
         {
-            KVPairConverter cv = new KVPairConverter();
-            
-            return _consul.KV.Get(key).ContinueWith(task =>
+            return _consul.KV.List(key).ContinueWith(task =>
             {
-                var kvPair = task.Result.Response;
-                return new Response() {Key = "get", Node = ConvertTo<Node>(kvPair.Value)};
+                var nodes = task.Result.Response.ToDictionary(pair => pair.Key, pair => Convert(pair.Value));
+                return new GetNodesResponse(nodes);
             });
         }
 
-        public Task<Response> Create(string seedsPath, string member)
+        public Task<CreateNodeResponse> Create(string seedsPath, string member, TimeSpan? ttl = null)
         {
-            return null;
+            return _consul.Session.Create(new SessionEntry() {TTL = ttl}).ContinueWith(task =>
+            {
+                if (task.Result.StatusCode == HttpStatusCode.Created)
+                {
+                    var distributedLock = _consul.AcquireLock(new LockOptions(member) {Session = task.Result.Response});
+                    if (distributedLock.Result.IsHeld)
+                    {
+                        return new CreateNodeResponse(member);
+                    }
+                    else
+                    {
+                        new CreateNodeResponse(string.Empty)
+                        {
+                            Key = member,
+                            Success = false,
+                            Reason = "Can't acquire lock"
+                        };
+                    }
+                }
+                return new CreateNodeResponse(string.Empty) {Key = member, Success = false, Reason = task.Result.Response} ;
+            });
+            
         }
 
         public Task<Response> Delete(string key, bool recursive)
@@ -43,9 +63,9 @@ namespace Akka.Cluster.Management.Consul
             return null;
         }
 
-        public void Start()
+        public void Start(string path, TimeSpan? ttl = null)
         {
-            throw new NotImplementedException();
+            _consul.KV.Put(new KVPair(path));
         }
 
         public void SetLeader()
@@ -58,14 +78,14 @@ namespace Akka.Cluster.Management.Consul
             throw new NotImplementedException();
         }
 
-        private T ConvertTo<T>(byte[] bytes)
+        private string Convert(byte[] bytes)
         {
-            return default(T);
+            return System.Text.Encoding.UTF8.GetString(bytes);
         }
 
-        private byte[] ConvertToBytes<T>(T value)
+        private byte[] Convert(string value)
         {
-            return new byte[]{ 1};
+            return System.Text.Encoding.UTF8.GetBytes(value);
         }
     }
 }
