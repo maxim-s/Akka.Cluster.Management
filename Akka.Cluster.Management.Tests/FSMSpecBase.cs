@@ -12,23 +12,20 @@ namespace Akka.Cluster.Management.Tests
     {
         private TimeSpan TransitionTimeout;
 
-        private FSMSpecBase(ActorSystem system) : base(system)
+
+        protected Mock<IServiceDiscoveryClient> ServiceDiscoveryClientMock { get; private set; }
+
+        protected FSMSpecBase() 
         {
             // TODO: Config settings
             Settings = new ClusterDiscoverySettings
             {
 
             };
-            StateProbe = CreateTestProbe(system);
+            StateProbe = CreateTestProbe(Sys);
             TransitionTimeout = TimeSpan.FromSeconds(10);
 
             // TODO: Mock ServiceDiscoveryClient
-        }
-
-        protected Mock<IServiceDiscoveryClient> ServiceDiscoveryClientMock { get; private set; }
-
-        protected FSMSpecBase() : this(new ActorSystemImpl("testsystem"))
-        {
         }
 
         public TestProbe StateProbe { get; set; }
