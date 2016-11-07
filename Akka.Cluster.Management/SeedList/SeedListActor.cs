@@ -10,7 +10,7 @@ using Akka.Dispatch;
 
 namespace Akka.Cluster.Management.SeedList
 {
-    public class SeedListActor : FSM<SeedListState, ISeedListData>
+    public class SeedListActor : FSM<SeedListState, ISeedListData>, IWithUnboundedStash
     {
         private readonly IServiceDiscoveryClient _client;
         private readonly ClusterDiscoverySettings _settings;
@@ -20,19 +20,19 @@ namespace Akka.Cluster.Management.SeedList
             _client = client;
             _settings = settings;
 
-            var stash = Context.CreateStash(this.GetType());
+            Stash = Context.CreateStash(this.GetType());
 
             When(SeedListState.AwaitingInitialState, @event =>
             {
                 var fsmEvent = @event.FsmEvent as InitialState;
                 if (fsmEvent != null)
                 {
-                    ServiceDiscovery(cl => cl.Get(_settings.SeedsPath, true, false)).Start();
+                    ServiceDiscovery(cl => cl.Get(_settings.SeedsPath, true, false));
                     return GoTo(SeedListState.AwaitingRegisteredSeeds).Using(new AwaitingRegisteredSeedsData(fsmEvent.Members));
                 }
                 if (@event.FsmEvent is MemberAdded || @event.FsmEvent is MemberRemoved)
                 {
-                    stash.Stash();
+                    Stash.Stash();
                     return Stay();
                 }
                 return null;
@@ -48,7 +48,7 @@ namespace Akka.Cluster.Management.SeedList
                     var seeds = resp.Nodes;
                     if (seeds == null)
                     {
-                        stash.UnstashAll();
+                        Stash.UnstashAll();
                         return
                             GoTo(SeedListState.AwaitingCommand)
                                 .Using(new AwaitingCommandData(ImmutableDictionary<string, string>.Empty));
@@ -69,7 +69,7 @@ namespace Akka.Cluster.Management.SeedList
                         }
 
                         var addressMapping = seeds.ToDictionary(node => node.Value, node => node.Key);
-                        stash.UnstashAll();
+                        Stash.UnstashAll();
                         return GoTo(SeedListState.AwaitingCommand).Using(new AwaitingCommandData(addressMapping));
                     }
                 }
@@ -82,7 +82,7 @@ namespace Akka.Cluster.Management.SeedList
                         Self.Tell(new MemberAdded(member));
                     }
 
-                    stash.UnstashAll();
+                    Stash.UnstashAll();
                     return
                         GoTo(SeedListState.AwaitingCommand)
                             .Using(new AwaitingCommandData(new Dictionary<string, string>()));
@@ -101,14 +101,14 @@ namespace Akka.Cluster.Management.SeedList
                 {
                     // TODO: Log warning 
                     RetryMessage(new InitialState(state.Members));
-                    stash.UnstashAll();
+                    Stash.UnstashAll();
                     return GoTo(SeedListState.AwaitingCommand)
                             .Using(new AwaitingInitialStateData());
                 }
 
                 if (@event.FsmEvent is MemberAdded || @event.FsmEvent is MemberRemoved)
                 {
-                    stash.Stash();
+                    Stash.Stash();
                     return Stay();
                 }
 
@@ -153,7 +153,7 @@ namespace Akka.Cluster.Management.SeedList
                 if (@event.FsmEvent is CreateNodeResponse)
                 {
                     var resp = @event.FsmEvent as CreateNodeResponse;
-                    stash.UnstashAll();
+                    Stash.UnstashAll();
                     return
                         GoTo(SeedListState.AwaitingCommand)
                             .Using(
@@ -165,7 +165,7 @@ namespace Akka.Cluster.Management.SeedList
                 if (@event.FsmEvent is DeleteNodeResponse)
                     {
                     var resp = @event.FsmEvent as DeleteNodeResponse;
-                    stash.UnstashAll();
+                    Stash.UnstashAll();
                         return
                             GoTo(SeedListState.AwaitingCommand)
                                 .Using(
@@ -180,7 +180,7 @@ namespace Akka.Cluster.Management.SeedList
                 {
                     // TODO: Log warning 
                     RetryMessage(state.Command);
-                    stash.UnstashAll();
+                    Stash.UnstashAll();
                     return GoTo(SeedListState.AwaitingCommand)
                             .Using(new AwaitingCommandData(state.AdressMapping));
                 }
@@ -190,14 +190,14 @@ namespace Akka.Cluster.Management.SeedList
                 {
                     // TODO: Log warning 
                     RetryMessage(state.Command);
-                    stash.UnstashAll();
+                    Stash.UnstashAll();
                     return GoTo(SeedListState.AwaitingCommand)
                             .Using(new AwaitingCommandData(state.AdressMapping));
                 }
 
                 if (@event.FsmEvent is MemberAdded || @event.FsmEvent is MemberRemoved)
                 {
-                    stash.Stash();
+                    Stash.Stash();
                     return Stay();
                 }
 
@@ -218,6 +218,8 @@ namespace Akka.Cluster.Management.SeedList
         {
             Context.System.Scheduler.ScheduleTellOnce(TimeSpan.FromMilliseconds(_settings.RetryDelay.TotalMilliseconds), Self, msg, Self);
         }
+
+        public IStash Stash { get; set; }
     }
 
     public class Failure
