@@ -2,7 +2,9 @@
 using System.Collections.Generic;
 using Akka.Actor;
 using Akka.Actor.Internal;
+using Akka.Cluster.Management.ServiceDiscovery;
 using Akka.TestKit;
+using Moq;
 
 namespace Akka.Cluster.Management.Tests
 {
@@ -19,7 +21,11 @@ namespace Akka.Cluster.Management.Tests
             };
             StateProbe = CreateTestProbe(system);
             TransitionTimeout = TimeSpan.FromSeconds(10);
+
+            // TODO: Mock ServiceDiscoveryClient
         }
+
+        protected Mock<IServiceDiscoveryClient> ServiceDiscoveryClientMock { get; private set; }
 
         protected FSMSpecBase() : this(new ActorSystemImpl("testsystem"))
         {
