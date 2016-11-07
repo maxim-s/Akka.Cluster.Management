@@ -8,7 +8,7 @@ namespace Akka.Cluster.Management.ServiceDiscovery
     {
         public string Key { get;  set; }
 
-        public bool Success { get; set; }
+        public bool Success { get; set; } = true;
 
         public string Reason { get; set; }
 

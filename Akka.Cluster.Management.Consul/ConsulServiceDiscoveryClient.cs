@@ -54,11 +54,18 @@ namespace Akka.Cluster.Management.Consul
             
         }
 
-        public Task<Response> Delete(string key, bool recursive)
+        public Task<DeleteNodeResponse> Delete(string key, bool recursive)
         {
             if (recursive)
             {
-                
+                _consul.Session.Destroy(key).ContinueWith(task =>
+                {
+                    if (task.Result.Response)
+                    {
+                        return new DeleteNodeResponse(string.Empty);
+                    }
+                    return new DeleteNodeResponse(string.Empty) {Success = false, Reason = "Can not delete."};
+                });
             }
             return null;
         }
