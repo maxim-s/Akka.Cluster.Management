@@ -25,7 +25,7 @@ namespace Akka.Cluster.Management.Tests
             StateProbe = CreateTestProbe(Sys);
             TransitionTimeout = TimeSpan.FromSeconds(10);
 
-            // TODO: Mock ServiceDiscoveryClient
+            ServiceDiscoveryClientMock = new Mock<IServiceDiscoveryClient>();
         }
 
         public TestProbe StateProbe { get; set; }
