@@ -134,7 +134,7 @@ namespace Akka.Cluster.Management.SeedList
                     string addressMapping;
                     if (commandData.AddressMapping.TryGetValue(memberRemoved.Member, out addressMapping))
                     {
-                        ServiceDiscovery(cl => cl.Delete(addressMapping, false)).Start();
+                        ServiceDiscovery(cl => cl.Delete(addressMapping, false));
                         // TODO: Implement deleting seedpath from service dicsovery client. Example: etcd(_.delete(key, recursive = false))
                         return
                             GoTo(SeedListState.AwaitingEtcdReply)
