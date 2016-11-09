@@ -20,7 +20,7 @@ namespace Akka.Cluster.Management.Tests
             // TODO: Config settings
             Settings = new ClusterDiscoverySettings
             {
-
+                SeedsPath = string.Empty
             };
             StateProbe = CreateTestProbe(Sys);
             TransitionTimeout = TimeSpan.FromSeconds(10);
