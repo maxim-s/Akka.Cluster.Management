@@ -31,7 +31,7 @@ namespace Akka.Cluster.Management.Tests
         private void Seed_list_manager_actor_should_proceed_to_AwaitCommand_when_seed_lists_are_empty()
         {
             var seedsTask = new TaskCompletionSource<GetNodesResponse>();
-            ServiceDiscoveryClientMock.Setup(s => s.Get(Settings.SeedsPath, true, true)).Returns(seedsTask.Task);
+            ServiceDiscoveryClientMock.Setup(s => s.Get(Settings.SeedsPath)).Returns(seedsTask.Task);
 
             var seedList = Init();
 
