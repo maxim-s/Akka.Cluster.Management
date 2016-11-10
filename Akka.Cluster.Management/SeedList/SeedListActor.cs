@@ -121,7 +121,7 @@ namespace Akka.Cluster.Management.SeedList
                 var commandData = @event.StateData as AwaitingCommandData;
                 if (memberAdded != null && commandData != null)
                 {
-                    ServiceDiscovery(cl => cl.Create(_settings.SeedsPath, memberAdded.Member)).Start();
+                    ServiceDiscovery(cl => cl.Create(_settings.SeedsPath, memberAdded.Member));
                     return
                         GoTo(SeedListState.AwaitingEtcdReply)
                             .Using(new AwaitingReplyData(memberAdded, commandData.AddressMapping));
