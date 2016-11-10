@@ -27,7 +27,7 @@ namespace Akka.Cluster.Management.SeedList
                 var fsmEvent = @event.FsmEvent as InitialState;
                 if (fsmEvent != null)
                 {
-                    ServiceDiscovery(cl => cl.Get(_settings.SeedsPath, true, false));
+                    ServiceDiscovery(cl => cl.Get(_settings.SeedsPath)).Start();
                     return GoTo(SeedListState.AwaitingRegisteredSeeds).Using(new AwaitingRegisteredSeedsData(fsmEvent.Members));
                 }
                 if (@event.FsmEvent is MemberAdded || @event.FsmEvent is MemberRemoved)
@@ -134,7 +134,7 @@ namespace Akka.Cluster.Management.SeedList
                     string addressMapping;
                     if (commandData.AddressMapping.TryGetValue(memberRemoved.Member, out addressMapping))
                     {
-                        ServiceDiscovery(cl => cl.Delete(addressMapping, false));
+                        ServiceDiscovery(cl => cl.Delete(_settings.SeedsPath, addressMapping, false)).Start();
                         // TODO: Implement deleting seedpath from service dicsovery client. Example: etcd(_.delete(key, recursive = false))
                         return
                             GoTo(SeedListState.AwaitingEtcdReply)

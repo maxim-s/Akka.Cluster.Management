@@ -11,6 +11,8 @@ Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Akka.Cluster.Management.Con
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Akka.Cluster.Management.ServiceDiscovery", "Akka.Cluster.Management.ServiceDiscovery\Akka.Cluster.Management.ServiceDiscovery.csproj", "{6D8E7605-B993-4711-A475-C3B597C9D000}"
 EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Akka.Cluster.Management.Consul.Tests", "Akka.Cluster.Management.Consul.Tests\Akka.Cluster.Management.Consul.Tests.csproj", "{045E7DDB-5BCE-4139-AD73-30BB817E810B}"
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Any CPU = Debug|Any CPU
@@ -33,6 +35,10 @@ Global
 		{6D8E7605-B993-4711-A475-C3B597C9D000}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{6D8E7605-B993-4711-A475-C3B597C9D000}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{6D8E7605-B993-4711-A475-C3B597C9D000}.Release|Any CPU.Build.0 = Release|Any CPU
+		{045E7DDB-5BCE-4139-AD73-30BB817E810B}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{045E7DDB-5BCE-4139-AD73-30BB817E810B}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{045E7DDB-5BCE-4139-AD73-30BB817E810B}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{045E7DDB-5BCE-4139-AD73-30BB817E810B}.Release|Any CPU.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE
