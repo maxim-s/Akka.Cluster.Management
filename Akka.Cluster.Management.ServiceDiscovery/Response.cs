@@ -18,7 +18,7 @@ namespace Akka.Cluster.Management.ServiceDiscovery
     {
         public GetNodesResponse(IDictionary<string,string> nodes)
         {
-                Nodes = nodes.ToImmutableDictionary();
+            Nodes = nodes != null? nodes.ToImmutableDictionary(): null;
         }
 
         public IImmutableDictionary<string,string> Nodes { get; private set; }
@@ -34,16 +34,6 @@ namespace Akka.Cluster.Management.ServiceDiscovery
         public string Address { get; private set; }
     }
 
-    public class CreateNodeFailResponse : Response
-    {
-        public CreateNodeFailResponse(string response)
-        {
-            Response = response;
-        }
-
-        public string Response { get; private set; }
-    }
-
     public class DeleteNodeResponse : Response
     {
         public DeleteNodeResponse(string address)
@@ -52,5 +42,17 @@ namespace Akka.Cluster.Management.ServiceDiscovery
         }
 
         public string Address { get; private set; }
+    }
+
+    public class SetLeaderResponse : Response
+    {
+        public SetLeaderResponse(string leaderPath, string address )
+        {
+            LeaderPath = leaderPath;
+            Address = address;
+        }
+
+        public string Address { get; private set; }
+        public string LeaderPath { get; private set; }
     }
 }

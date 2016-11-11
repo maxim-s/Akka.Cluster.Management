@@ -19,48 +19,56 @@ namespace Akka.Cluster.Management.Consul
             _consul = new ConsulClient();
         }
 
-        public Task<GetNodesResponse> Get(string key, bool recursive, bool sorted)
+        public Task<GetNodesResponse> Get(string seedsPath)
         {
-            return _consul.KV.List(key).ContinueWith(task =>
+            return _consul.KV.List(seedsPath).ContinueWith(task =>
             {
-                var nodes = task.Result.Response.ToDictionary(pair => pair.Key, pair => Convert(pair.Value));
-                return new GetNodesResponse(nodes);
+                if (task.Result.StatusCode == HttpStatusCode.OK)
+                {
+                    var nodes = task.Result.Response.ToDictionary(pair => pair.Key, pair => Convert(pair.Value));
+                    return new GetNodesResponse(nodes) {Success = true};
+                } 
+                return new GetNodesResponse(null) { Success = false, Reason = string.Format("Failed with status {0}", task.Result.StatusCode)};
             });
         }
 
         public Task<CreateNodeResponse> Create(string seedsPath, string member, TimeSpan? ttl = null)
         {
-            return _consul.Session.Create(new SessionEntry() {TTL = ttl}).ContinueWith(task =>
+            var key = CreateKey(seedsPath, member);
+            return _consul.KV.Put(new KVPair(key) {Value = Convert(member)}).ContinueWith(task =>
             {
-                if (task.Result.StatusCode == HttpStatusCode.Created)
+                if (task.Result.StatusCode == HttpStatusCode.OK)
                 {
-                    var distributedLock = _consul.AcquireLock(new LockOptions(member) {Session = task.Result.Response});
-                    if (distributedLock.Result.IsHeld)
+                    return new CreateNodeResponse(string.Empty)
                     {
-                        return new CreateNodeResponse(member);
-                    }
-                    else
-                    {
-                        new CreateNodeResponse(string.Empty)
-                        {
-                            Key = member,
-                            Success = false,
-                            Reason = "Can't acquire lock"
-                        };
-                    }
+                        Key = member,
+                        Success = true
+                    };
                 }
-                return new CreateNodeResponse(string.Empty) {Key = member, Success = false, Reason = task.Result.Response} ;
+                else
+                {
+                    return new CreateNodeResponse(string.Empty) { Key = member, Success = false, Reason = string.Format("failed to add member {0} with seeds path {1}",member,seedsPath) };
+                }
+                
             });
             
         }
 
-        public Task<Response> Delete(string key, bool recursive)
+        public Task<DeleteNodeResponse> Delete(string seedsPath, string member = null, bool recursive = false)
         {
-            if (recursive)
-            {
-                
-            }
-            return null;
+            var key = CreateKey(seedsPath, member);
+            var deleteTask = recursive ? _consul.KV.DeleteTree(seedsPath) : _consul.KV.Delete(key);
+                return deleteTask.ContinueWith(task =>
+                {
+                    if (task.Result.StatusCode == HttpStatusCode.OK)
+                    {
+                        return new DeleteNodeResponse(key) {Success = true};
+                    }
+                    else
+                    {
+                        return new DeleteNodeResponse(key) { Success = false, Reason = "Can't delete  lock"};
+                    }
+                });
         }
 
         public void Start(string path, TimeSpan? ttl = null)
@@ -68,14 +76,63 @@ namespace Akka.Cluster.Management.Consul
             _consul.KV.Put(new KVPair(path));
         }
 
-        public void SetLeader()
+        public Task<SetLeaderResponse> SetLeader(string leaderPath, string address, TimeSpan leaderEntryTtl)
         {
-            throw new NotImplementedException();
+            var sessionTask = CreateSession(leaderPath, address, leaderEntryTtl);
+            return Acquire(sessionTask);
         }
 
-        public void CompareAndSet(string leaderPath, string address, TimeSpan leaderEntryTtl)
+        private Task<CreateSessionResponse> CreateSession(string leaderPath, string address, TimeSpan leaderEntryTtl)
         {
-            throw new NotImplementedException();
+            return _consul.Session.Create(new SessionEntry() { TTL = leaderEntryTtl, Name = leaderPath }).ContinueWith(task =>
+            {
+                if (task.Result.StatusCode == HttpStatusCode.OK)
+                {
+                    return new CreateSessionResponse(task.Result.Response, leaderPath, address, true, null);
+                }
+                else
+                {
+                    return new CreateSessionResponse(task.Result.Response, leaderPath, address, false, string.Format("Failed to Create seesion with status {0}", task.Result.StatusCode));
+                }
+            });
+        }
+
+        private Task<SetLeaderResponse> Acquire(Task<CreateSessionResponse> createSessionTask)
+        {
+            if (createSessionTask.Result.Success)
+            {
+                var response = createSessionTask.Result;
+                return _consul.KV.Acquire(new KVPair(response.LeaderPath)
+                {
+                    Session = response.Session,
+                    Value = Convert(response.Address)
+                })
+                    .ContinueWith(
+                        acq =>
+                        {
+                            if (acq.Result.StatusCode == HttpStatusCode.OK)
+                            {
+                                return new SetLeaderResponse(response.LeaderPath, response.Address) {Success = true};
+                            }
+                            else
+                            {
+                                return new SetLeaderResponse(response.LeaderPath, response.Address)
+                                {
+                                    Success = false,
+                                    Reason =
+                                        string.Format("Failed to Acquire with status {0}", acq.Result.StatusCode)
+                                };
+                            }
+                        });
+            }
+            return createSessionTask.ContinueWith(t =>
+            {
+                return new SetLeaderResponse(t.Result.LeaderPath, t.Result.Address)
+                {
+                    Success = t.Result.Success,
+                    Reason = t.Result.Reason
+                };
+            });
         }
 
         private string Convert(byte[] bytes)
@@ -86,6 +143,29 @@ namespace Akka.Cluster.Management.Consul
         private byte[] Convert(string value)
         {
             return System.Text.Encoding.UTF8.GetBytes(value);
+        }
+
+        private static string CreateKey(string seedsPath, string member)
+        {
+            return string.Format("{0}/{1}", seedsPath, member);
+        }
+        
+        private class CreateSessionResponse
+        {
+            public CreateSessionResponse(string session, string leaderPath, string address, bool success,string reason)
+            {
+                Session = session;
+                LeaderPath = leaderPath;
+                Address = address;
+                Success = success;
+                Reason = reason;
+            }
+
+            public string Session { get; private set; }
+            public string LeaderPath { get; private set; }
+            public string Address { get; private set; }
+            public bool Success { get; private set; }
+            public string Reason { get; private set; }
         }
     }
 }

@@ -52,6 +52,7 @@ namespace Akka.Cluster.Management.LeaderEntry
                     }
                     
                     // TODO: log
+
                     return GoTo(LeaderEntryState.Idle)
                         .Using(new LeaderEntryData(@event.StateData.AssumeEntryExists))
                         .ForMax(_settings.RetryDelay);
@@ -80,7 +81,7 @@ namespace Akka.Cluster.Management.LeaderEntry
         /// </summary>
         private void CreateLeaderEntry()
         {
-            _client.CompareAndSet(_settings.LeaderPath, _address, _settings.LeaderEntryTTL);
+            _client.SetLeader(_settings.LeaderPath, _address, _settings.LeaderEntryTTL);
         }
 
         /// <summary>
@@ -90,7 +91,7 @@ namespace Akka.Cluster.Management.LeaderEntry
         /// </summary>
         private void RefreshLeaderEntry()
         {
-            _client.CompareAndSet(_settings.LeaderPath, _address, _settings.LeaderEntryTTL);
+            _client.SetLeader(_settings.LeaderPath, _address, _settings.LeaderEntryTTL);
         }
     }
 }

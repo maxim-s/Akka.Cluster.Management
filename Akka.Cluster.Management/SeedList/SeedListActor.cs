@@ -27,7 +27,7 @@ namespace Akka.Cluster.Management.SeedList
                 var fsmEvent = @event.FsmEvent as InitialState;
                 if (fsmEvent != null)
                 {
-                    ServiceDiscovery(cl => cl.Get(_settings.SeedsPath, true, false));
+                    ServiceDiscovery(cl => cl.Get(_settings.SeedsPath));
                     return GoTo(SeedListState.AwaitingRegisteredSeeds).Using(new AwaitingRegisteredSeedsData(fsmEvent.Members));
                 }
                 if (@event.FsmEvent is MemberAdded || @event.FsmEvent is MemberRemoved)
@@ -92,7 +92,7 @@ namespace Akka.Cluster.Management.SeedList
                 {
                     // TODO: Log warning 
                     RetryMessage(new InitialState(state.Members));
-                    return GoTo(SeedListState.AwaitingCommand)
+                    return GoTo(SeedListState.AwaitingInitialState)
                             .Using(new AwaitingInitialStateData());
                 }
 
@@ -102,7 +102,7 @@ namespace Akka.Cluster.Management.SeedList
                     // TODO: Log warning 
                     RetryMessage(new InitialState(state.Members));
                     Stash.UnstashAll();
-                    return GoTo(SeedListState.AwaitingCommand)
+                    return GoTo(SeedListState.AwaitingInitialState)
                             .Using(new AwaitingInitialStateData());
                 }
 
@@ -134,7 +134,7 @@ namespace Akka.Cluster.Management.SeedList
                     string addressMapping;
                     if (commandData.AddressMapping.TryGetValue(memberRemoved.Member, out addressMapping))
                     {
-                        ServiceDiscovery(cl => cl.Delete(addressMapping, false));
+                        ServiceDiscovery(cl => cl.Delete(_settings.SeedsPath, addressMapping, false));
                         // TODO: Implement deleting seedpath from service dicsovery client. Example: etcd(_.delete(key, recursive = false))
                         return
                             GoTo(SeedListState.AwaitingEtcdReply)
@@ -150,9 +150,10 @@ namespace Akka.Cluster.Management.SeedList
             When(SeedListState.AwaitingEtcdReply, @event =>
             {
                 var state = @event.StateData as AwaitingReplyData;
-                if (@event.FsmEvent is CreateNodeResponse)
+                var createNodeResponse = @event.FsmEvent as CreateNodeResponse;
+                if (createNodeResponse != null)
                 {
-                    var resp = @event.FsmEvent as CreateNodeResponse;
+                    var resp = createNodeResponse;
                     Stash.UnstashAll();
                     return
                         GoTo(SeedListState.AwaitingCommand)
@@ -162,9 +163,10 @@ namespace Akka.Cluster.Management.SeedList
                                         .Add(resp.Address, resp.Key)));
                 }
 
-                if (@event.FsmEvent is DeleteNodeResponse)
-                    {
-                    var resp = @event.FsmEvent as DeleteNodeResponse;
+                var deleteNodeResponse = @event.FsmEvent as DeleteNodeResponse;
+                if (deleteNodeResponse != null)
+                {
+                    var resp = deleteNodeResponse;
                     Stash.UnstashAll();
                         return
                             GoTo(SeedListState.AwaitingCommand)
