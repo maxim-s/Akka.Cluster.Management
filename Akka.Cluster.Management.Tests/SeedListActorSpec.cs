@@ -8,6 +8,7 @@ using System.Threading.Tasks;
 using Akka.Actor;
 using Akka.Cluster.Management.SeedList;
 using Akka.Cluster.Management.ServiceDiscovery;
+using Akka.TestKit;
 using Moq;
 using Xunit;
 
@@ -112,8 +113,8 @@ namespace Akka.Cluster.Management.Tests
             var createTask1 = new TaskCompletionSource<CreateNodeResponse>();
             var deleteTask1 = new TaskCompletionSource<DeleteNodeResponse>();
             ServiceDiscoveryClientMock.Setup(s => s.Get(Settings.SeedsPath)).Returns(seedsTask.Task);
-            ServiceDiscoveryClientMock.Setup(s => s.Create(It.IsAny<string>(), It.IsAny<string>(), It.IsAny<TimeSpan>())).Returns(createTask1.Task);
-            ServiceDiscoveryClientMock.Setup(s => s.Delete($"{Settings.SeedsPath}/{131}", null, It.IsAny<bool>())).Returns(deleteTask1.Task);
+            ServiceDiscoveryClientMock.Setup(s => s.Create(Settings.SeedsPath, Addr1, It.IsAny<TimeSpan?>())).Returns(createTask1.Task);
+            ServiceDiscoveryClientMock.Setup(s => s.Delete(Settings.SeedsPath, "131", It.IsAny<bool>())).Returns(deleteTask1.Task);
 
             var seedList = Init();
             seedList.Tell(new InitialState(ImmutableHashSet<string>.Empty));
@@ -125,14 +126,14 @@ namespace Akka.Cluster.Management.Tests
             seedList.Tell(new MemberAdded(Addr1));
             ExpectTransitionTo(SeedListState.AwaitingEtcdReply);
 
-            createTask1.SetResult(new CreateNodeResponse(Addr1));
-            ExpectTransitionTo(SeedListState.AwaitingCommand); // Falls there. Not clear reason why prev raw doesn't rise a FSM event.
+            createTask1.SetResult(new CreateNodeResponse(Addr1) {Key = "131"});
+            ExpectTransitionTo(SeedListState.AwaitingCommand);
 
             seedList.Tell(new MemberRemoved(Addr1));
             ExpectTransitionTo(SeedListState.AwaitingEtcdReply);
 
-            //deleteTask1.SetResult(new DeleteNodeResponse(Addr1));
-            //ExpectTransitionTo(SeedListState.AwaitingCommand);
+            deleteTask1.SetResult(new DeleteNodeResponse(Addr1));
+            ExpectTransitionTo(SeedListState.AwaitingCommand);
         }
 
         [Fact]
