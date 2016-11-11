@@ -20,7 +20,12 @@ namespace Akka.Cluster.Management.Tests
 
         private IActorRef Init()
         {
-            var seedList = Sys.ActorOf(Props.Create(() => new SeedListActor(ServiceDiscoveryClientMock.Object, Settings)));
+            return Init(Settings);
+        }
+
+        private IActorRef Init(ClusterDiscoverySettings clusterDiscoverySettings)
+        {
+            var seedList = Sys.ActorOf(Props.Create(() => new SeedListActor(ServiceDiscoveryClientMock.Object, clusterDiscoverySettings)));
             seedList.Tell(new FSMBase.SubscribeTransitionCallBack(StateProbe.Ref));
             ExpectInitialState(SeedListState.AwaitingInitialState);
             return seedList;
@@ -107,7 +112,7 @@ namespace Akka.Cluster.Management.Tests
             var createTask1 = new TaskCompletionSource<CreateNodeResponse>();
             var deleteTask1 = new TaskCompletionSource<DeleteNodeResponse>();
             ServiceDiscoveryClientMock.Setup(s => s.Get(Settings.SeedsPath)).Returns(seedsTask.Task);
-            ServiceDiscoveryClientMock.Setup(s => s.Create(Settings.SeedsPath, Addr1, It.IsAny<TimeSpan>())).Returns(createTask1.Task);
+            ServiceDiscoveryClientMock.Setup(s => s.Create(It.IsAny<string>(), It.IsAny<string>(), It.IsAny<TimeSpan>())).Returns(createTask1.Task);
             ServiceDiscoveryClientMock.Setup(s => s.Delete($"{Settings.SeedsPath}/{131}", null, It.IsAny<bool>())).Returns(deleteTask1.Task);
 
             var seedList = Init();
@@ -126,17 +131,69 @@ namespace Akka.Cluster.Management.Tests
             seedList.Tell(new MemberRemoved(Addr1));
             ExpectTransitionTo(SeedListState.AwaitingEtcdReply);
 
-            deleteTask1.SetResult(new DeleteNodeResponse(Addr1));
+            //deleteTask1.SetResult(new DeleteNodeResponse(Addr1));
+            //ExpectTransitionTo(SeedListState.AwaitingCommand);
+        }
+
+        [Fact]
+        private void it_should_retry_fetching_registered_seeds_in_case_of_errors()
+        {
+            var seedsErrorTask = new TaskCompletionSource<GetNodesResponse>();
+            var seedsSuccessTask = new TaskCompletionSource<GetNodesResponse>();
+
+            ServiceDiscoveryClientMock.SetupSequence(s => s.Get(Settings.SeedsPath))
+                .Returns(seedsErrorTask.Task)
+                .Returns(seedsSuccessTask.Task);
+
+            var seedList = Init(Settings);
+            seedList.Tell(new InitialState(ImmutableHashSet<string>.Empty));
+            ExpectTransitionTo(SeedListState.AwaitingRegisteredSeeds);
+
+            seedsErrorTask.SetException(new Exception());
+            ExpectTransitionTo(SeedListState.AwaitingInitialState);
+            ExpectTransitionTo(SeedListState.AwaitingRegisteredSeeds);
+
+            seedsSuccessTask.SetResult(new GetNodesResponse(new Dictionary<string, string>()));
             ExpectTransitionTo(SeedListState.AwaitingCommand);
         }
 
-        //[Fact]
-        //private void it_should_retry_fetching_registered_seeds_in_case_of_errors()
-        //{
-        //    var seedsErrorTask = new TaskCompletionSource<Response>();
-        //    var seedsSuccessTask = new TaskCompletionSource<Response>();
+        private void it_should_retry_Add_Remove_operations_in_case_of_errors()
+        {
+            var seedsTask = new TaskCompletionSource<GetNodesResponse>();
+            var createTaskError = new TaskCompletionSource<CreateNodeResponse>();
+            var createTask1 = new TaskCompletionSource<CreateNodeResponse>();
+            var deleteTaskError = new TaskCompletionSource<Response>();
+            var deleteTask1 = new TaskCompletionSource<Response>();
+            //  when(fetchSeedsReq).thenReturn(seedsTask.future)
+            //  when(createReq1).thenReturn(createTaskError.future).thenReturn(createTask1.future)
+            //  when(deleteReq1).thenReturn(deleteTaskError.future).thenReturn(deleteTask1.future)
 
-        //    ServiceDiscoveryClientMock.Setup(s => s.Get(Settings.SeedsPath, It.IsAny<bool>(), It.IsAny<bool>())).Returns(seedsSuccessTask.Task);
-        //}
+            var seedList = Init(Settings);
+            seedList.Tell(new InitialState(ImmutableHashSet<string>.Empty));
+            ExpectTransitionTo(SeedListState.AwaitingRegisteredSeeds);
+
+            seedsTask.SetResult(new GetNodesResponse(new Dictionary<string, string>()));
+            ExpectTransitionTo(SeedListState.AwaitingCommand);
+
+            seedList.Tell(new MemberAdded(Addr1));
+            ExpectTransitionTo(SeedListState.AwaitingEtcdReply);
+
+            //createTaskError.failure(failure);
+            ExpectTransitionTo(SeedListState.AwaitingCommand);
+            ExpectTransitionTo(SeedListState.AwaitingEtcdReply);
+
+            createTask1.SetResult(new CreateNodeResponse(Addr1));
+            ExpectTransitionTo(SeedListState.AwaitingCommand);
+
+            seedList.Tell(new MemberRemoved(Addr1));
+            ExpectTransitionTo(SeedListState.AwaitingEtcdReply);
+
+            //deleteTaskError.failure(failure);
+            ExpectTransitionTo(SeedListState.AwaitingCommand);
+            ExpectTransitionTo(SeedListState.AwaitingEtcdReply);
+
+            deleteTask1.SetResult(new Response());
+            ExpectTransitionTo(SeedListState.AwaitingCommand);
+        }
     }
 }
