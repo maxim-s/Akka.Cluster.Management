@@ -96,7 +96,7 @@ namespace Akka.Cluster.Management.SeedList
                             .Using(new AwaitingInitialStateData());
                 }
 
-                var failure = @event.FsmEvent as Failure;
+                var failure = @event.FsmEvent as Status.Failure;
                 if (failure != null && state != null)
                 {
                     // TODO: Log warning 

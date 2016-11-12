@@ -3,13 +3,14 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
+using Akka.Cluster.Management.ServiceDiscovery;
 using Xunit;
 
 namespace Akka.Cluster.Management.Consul.Tests
 {
     public class ConsulServiceDiscoveryClientSpec
     {
-        private readonly ConsulServiceDiscoveryClient _client = new ConsulServiceDiscoveryClient();
+        private readonly IServiceDiscoveryClient _client = new ConsulServiceDiscoveryClient();
         private const string SeedsPath = "SeedsPath";
         [Fact]
         public async void Should_register_seed()
@@ -61,6 +62,15 @@ namespace Akka.Cluster.Management.Consul.Tests
             Assert.True(resp.Success);
             var get = await _client.Get(SeedsPath);
             Assert.True(get.Nodes.Count == 1);
+        }
+
+        [Fact]
+        public async void Should_set_leader()
+        {
+            var resp = await _client.SetLeader("leader/path", "address", TimeSpan.FromSeconds(10));
+            Assert.True(resp.Success);
+            Assert.Equal("address", resp.Address);
+            Assert.Equal("leader/path", resp.LeaderPath);
         }
     }
 }

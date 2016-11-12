@@ -59,8 +59,8 @@ namespace Akka.Cluster.Management.Tests
             var deleteTask1 = new TaskCompletionSource<DeleteNodeResponse>();
             var deleteTask2 = new TaskCompletionSource<DeleteNodeResponse>();
             ServiceDiscoveryClientMock.Setup(s => s.Get(Settings.SeedsPath)).Returns(seedsTask.Task);
-            ServiceDiscoveryClientMock.Setup(s => s.Delete($"{Settings.SeedsPath}/{131}", null, It.IsAny<bool>())).Returns(deleteTask1.Task);
-            ServiceDiscoveryClientMock.Setup(s => s.Delete($"{Settings.SeedsPath}/{132}", null, It.IsAny<bool>())).Returns(deleteTask2.Task);
+            ServiceDiscoveryClientMock.Setup(s => s.Delete(Settings.SeedsPath, "/131", It.IsAny<bool>())).Returns(deleteTask1.Task);
+            ServiceDiscoveryClientMock.Setup(s => s.Delete(Settings.SeedsPath, "/132", It.IsAny<bool>())).Returns(deleteTask2.Task);
 
             var seedList = Init();
 
@@ -74,7 +74,7 @@ namespace Akka.Cluster.Management.Tests
             }));
 
             ExpectTransitionTo(SeedListState.AwaitingCommand);
-            ExpectTransitionTo(SeedListState.AwaitingEtcdReply);
+            ExpectTransitionTo(SeedListState.AwaitingReply);
 
             deleteTask1.SetResult(new DeleteNodeResponse(Addr1));
             deleteTask2.SetResult(new DeleteNodeResponse(Addr2));
@@ -89,8 +89,8 @@ namespace Akka.Cluster.Management.Tests
             var createTask1 = new TaskCompletionSource<CreateNodeResponse>();
             var createTask2 = new TaskCompletionSource<CreateNodeResponse>();
             ServiceDiscoveryClientMock.Setup(s => s.Get(Settings.SeedsPath)).Returns(seedsTask.Task);
-            ServiceDiscoveryClientMock.Setup(s => s.Create(Settings.SeedsPath, Addr1, It.IsAny<TimeSpan>())).Returns(createTask1.Task);
-            ServiceDiscoveryClientMock.Setup(s => s.Create(Settings.SeedsPath, Addr2, It.IsAny<TimeSpan>())).Returns(createTask2.Task);
+            ServiceDiscoveryClientMock.Setup(s => s.Create(Settings.SeedsPath, Addr1, It.IsAny<TimeSpan?>())).Returns(createTask1.Task);
+            ServiceDiscoveryClientMock.Setup(s => s.Create(Settings.SeedsPath, Addr2, It.IsAny<TimeSpan?>())).Returns(createTask2.Task);
 
             var seedList = Init();
 
@@ -99,7 +99,7 @@ namespace Akka.Cluster.Management.Tests
 
             seedsTask.SetResult(new GetNodesResponse(new Dictionary<string, string>()));
             ExpectTransitionTo(SeedListState.AwaitingCommand);
-            ExpectTransitionTo(SeedListState.AwaitingEtcdReply);
+            ExpectTransitionTo(SeedListState.AwaitingReply);
 
             createTask1.SetResult(new CreateNodeResponse(Addr1));
             createTask2.SetResult(new CreateNodeResponse(Addr2));
@@ -114,7 +114,7 @@ namespace Akka.Cluster.Management.Tests
             var deleteTask1 = new TaskCompletionSource<DeleteNodeResponse>();
             ServiceDiscoveryClientMock.Setup(s => s.Get(Settings.SeedsPath)).Returns(seedsTask.Task);
             ServiceDiscoveryClientMock.Setup(s => s.Create(Settings.SeedsPath, Addr1, It.IsAny<TimeSpan?>())).Returns(createTask1.Task);
-            ServiceDiscoveryClientMock.Setup(s => s.Delete(Settings.SeedsPath, "131", It.IsAny<bool>())).Returns(deleteTask1.Task);
+            ServiceDiscoveryClientMock.Setup(s => s.Delete(Settings.SeedsPath, Addr1, It.IsAny<bool>())).Returns(deleteTask1.Task);
 
             var seedList = Init();
             seedList.Tell(new InitialState(ImmutableHashSet<string>.Empty));
@@ -124,13 +124,13 @@ namespace Akka.Cluster.Management.Tests
             ExpectTransitionTo(SeedListState.AwaitingCommand);
 
             seedList.Tell(new MemberAdded(Addr1));
-            ExpectTransitionTo(SeedListState.AwaitingEtcdReply);
+            ExpectTransitionTo(SeedListState.AwaitingReply);
 
-            createTask1.SetResult(new CreateNodeResponse(Addr1) {Key = "131"});
+            createTask1.SetResult(new CreateNodeResponse(Addr1) {Key = Addr1 });
             ExpectTransitionTo(SeedListState.AwaitingCommand);
 
             seedList.Tell(new MemberRemoved(Addr1));
-            ExpectTransitionTo(SeedListState.AwaitingEtcdReply);
+            ExpectTransitionTo(SeedListState.AwaitingReply);
 
             deleteTask1.SetResult(new DeleteNodeResponse(Addr1));
             ExpectTransitionTo(SeedListState.AwaitingCommand);
@@ -177,21 +177,21 @@ namespace Akka.Cluster.Management.Tests
             ExpectTransitionTo(SeedListState.AwaitingCommand);
 
             seedList.Tell(new MemberAdded(Addr1));
-            ExpectTransitionTo(SeedListState.AwaitingEtcdReply);
+            ExpectTransitionTo(SeedListState.AwaitingReply);
 
             //createTaskError.failure(failure);
             ExpectTransitionTo(SeedListState.AwaitingCommand);
-            ExpectTransitionTo(SeedListState.AwaitingEtcdReply);
+            ExpectTransitionTo(SeedListState.AwaitingReply);
 
             createTask1.SetResult(new CreateNodeResponse(Addr1));
             ExpectTransitionTo(SeedListState.AwaitingCommand);
 
             seedList.Tell(new MemberRemoved(Addr1));
-            ExpectTransitionTo(SeedListState.AwaitingEtcdReply);
+            ExpectTransitionTo(SeedListState.AwaitingReply);
 
             //deleteTaskError.failure(failure);
             ExpectTransitionTo(SeedListState.AwaitingCommand);
-            ExpectTransitionTo(SeedListState.AwaitingEtcdReply);
+            ExpectTransitionTo(SeedListState.AwaitingReply);
 
             deleteTask1.SetResult(new Response());
             ExpectTransitionTo(SeedListState.AwaitingCommand);
