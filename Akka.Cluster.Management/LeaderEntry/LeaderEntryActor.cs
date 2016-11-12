@@ -75,7 +75,7 @@ namespace Akka.Cluster.Management.LeaderEntry
         /// <summary>
         /// Create the leader entry, assuming it does not exist.
         /// 
-        /// This method is used when the leader entry has expired while the leader node was unable to reach etcd, or when
+        /// This method is used when the leader entry has expired while the leader node was unable to reach service discovery, or when
         /// the leader entry was hijacked by another node.System operator will eventually shut down one of the contending
         ///  leaders, and if the current node prevails it will reclaim the leader entry after it expires.
         /// </summary>

@@ -74,8 +74,8 @@ namespace Akka.Cluster.Management.SeedList
                     }
                 }
 
-                var etcdError = @event.FsmEvent as ServiceDiscovery.Error;
-                if (etcdError != null && etcdError.ErrorType == ErrorType.KeyNotFound)
+                var error = @event.FsmEvent as ServiceDiscovery.Error;
+                if (error != null && error.ErrorType == ErrorType.KeyNotFound)
                 {
                     foreach (var member in state.Members)
                     {
@@ -88,7 +88,7 @@ namespace Akka.Cluster.Management.SeedList
                             .Using(new AwaitingCommandData(new Dictionary<string, string>()));
                 }
 
-                if (etcdError != null && state != null)
+                if (error != null && state != null)
                 {
                     // TODO: Log warning 
                     RetryMessage(new InitialState(state.Members));
@@ -123,7 +123,7 @@ namespace Akka.Cluster.Management.SeedList
                 {
                     ServiceDiscovery(cl => cl.Create(_settings.SeedsPath, memberAdded.Member));
                     return
-                        GoTo(SeedListState.AwaitingEtcdReply)
+                        GoTo(SeedListState.AwaitingReply)
                             .Using(new AwaitingReplyData(memberAdded, commandData.AddressMapping));
                 }
 
@@ -135,9 +135,8 @@ namespace Akka.Cluster.Management.SeedList
                     if (commandData.AddressMapping.TryGetValue(memberRemoved.Member, out addressMapping))
                     {
                         ServiceDiscovery(cl => cl.Delete(_settings.SeedsPath, addressMapping, false));
-                        // TODO: Implement deleting seedpath from service dicsovery client. Example: etcd(_.delete(key, recursive = false))
                         return
-                            GoTo(SeedListState.AwaitingEtcdReply)
+                            GoTo(SeedListState.AwaitingReply)
                                 .Using(new AwaitingReplyData(memberRemoved, commandData.AddressMapping));
                     }
 
@@ -147,7 +146,7 @@ namespace Akka.Cluster.Management.SeedList
                 return null;
             });
 
-            When(SeedListState.AwaitingEtcdReply, @event =>
+            When(SeedListState.AwaitingReply, @event =>
             {
                 var state = @event.StateData as AwaitingReplyData;
                 var createNodeResponse = @event.FsmEvent as CreateNodeResponse;
@@ -177,8 +176,8 @@ namespace Akka.Cluster.Management.SeedList
                     
                 }
 
-                var etcdError = @event.FsmEvent as ServiceDiscovery.Error;
-                if (etcdError != null && state != null)
+                var error = @event.FsmEvent as ServiceDiscovery.Error;
+                if (error != null && state != null)
                 {
                     // TODO: Log warning 
                     RetryMessage(state.Command);

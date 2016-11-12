@@ -5,6 +5,6 @@ namespace Akka.Cluster.Management.SeedList
         AwaitingInitialState,
         AwaitingRegisteredSeeds,
         AwaitingCommand,
-        AwaitingEtcdReply
+        AwaitingReply
     }
 }
