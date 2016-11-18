@@ -1,15 +1,9 @@
-﻿using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
+﻿using System.Threading.Tasks;
 using Akka.Actor;
 using Akka.Cluster.Management.LeaderEntry;
-using Akka.Cluster.Management.SeedList;
 using Akka.Cluster.Management.ServiceDiscovery;
 using Moq;
 using Xunit;
-using Xunit.Sdk;
 
 namespace Akka.Cluster.Management.Tests
 {
