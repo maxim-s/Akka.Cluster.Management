@@ -46,10 +46,11 @@ namespace Akka.Cluster.Management.ServiceDiscovery
 
     public class SetLeaderResponse : Response
     {
-        public SetLeaderResponse(string leaderPath, string address )
+        public SetLeaderResponse(string leaderPath, string address)
         {
             LeaderPath = leaderPath;
             Address = address;
+            Success = true;
         }
 
         public string Address { get; private set; }

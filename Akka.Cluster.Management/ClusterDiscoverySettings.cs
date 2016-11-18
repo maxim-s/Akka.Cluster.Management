@@ -4,6 +4,11 @@ namespace Akka.Cluster.Management
 {
     public class ClusterDiscoverySettings
     {
+        public ClusterDiscoverySettings(string leaderEntryPath)
+        {
+            LeaderPath = leaderEntryPath;
+        }
+
         /// <summary>
         /// Path, relative to seeds, where seed nodes information is stored
         /// </summary>
@@ -13,7 +18,7 @@ namespace Akka.Cluster.Management
 
         public TimeSpan RetryDelay { get; set; }
 
-        public string LeaderPath { get; }
+        public string LeaderPath { get; private set; }
 
         public TimeSpan SeedsJoinTimeout { get; set; }
         public TimeSpan SeedsFetchTimeout { get; set; }
