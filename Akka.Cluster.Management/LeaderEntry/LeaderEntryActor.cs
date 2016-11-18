@@ -36,26 +36,21 @@ namespace Akka.Cluster.Management.LeaderEntry
 
             When(LeaderEntryState.AwaitingReply, @event =>
             {
-                if (@event.FsmEvent is ResponseEvent)
+                var fsmEvent = @event.FsmEvent as SetLeaderResponse;
+                if (fsmEvent != null)
                 {
-                    return GoTo(LeaderEntryState.Idle).Using(new LeaderEntryData (true)).ForMax(refreshInterval);
-                }
-
-                var errorEvent = @event.FsmEvent as ErrorEvent;
-                if (errorEvent != null)
-                {
-                    if (errorEvent.Status == ErrorStatus.KeyNotFound || errorEvent.Status == ErrorStatus.TestFailed)
+                    if (fsmEvent.Success)
                     {
-                        return GoTo(LeaderEntryState.Idle)
-                            .Using(new LeaderEntryData(false))
-                            .ForMax(refreshInterval);
+                        return GoTo(LeaderEntryState.Idle).Using(new LeaderEntryData (true)).ForMax(refreshInterval);
                     }
-                    
-                    // TODO: log
+                    else
+                    {
+                        // TODO: log
 
-                    return GoTo(LeaderEntryState.Idle)
-                        .Using(new LeaderEntryData(@event.StateData.AssumeEntryExists))
-                        .ForMax(_settings.RetryDelay);
+                        return GoTo(LeaderEntryState.Idle)
+                            .Using(new LeaderEntryData(@event.StateData.AssumeEntryExists))
+                            .ForMax(_settings.RetryDelay);
+                    }
                 }
 
                 if (@event.FsmEvent is Status.Failure)
@@ -81,7 +76,7 @@ namespace Akka.Cluster.Management.LeaderEntry
         /// </summary>
         private void CreateLeaderEntry()
         {
-            _client.SetLeader(_settings.LeaderPath, _address, _settings.LeaderEntryTTL);
+            _client.SetLeader(_settings.LeaderPath, _address, _settings.LeaderEntryTTL).PipeTo(Self);
         }
 
         /// <summary>
@@ -91,7 +86,7 @@ namespace Akka.Cluster.Management.LeaderEntry
         /// </summary>
         private void RefreshLeaderEntry()
         {
-            _client.SetLeader(_settings.LeaderPath, _address, _settings.LeaderEntryTTL);
+            _client.SetLeader(_settings.LeaderPath, _address, _settings.LeaderEntryTTL).PipeTo(Self);
         }
     }
 }
