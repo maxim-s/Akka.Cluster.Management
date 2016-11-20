@@ -13,11 +13,13 @@ namespace Akka.Cluster.Management
     public class ClusterDiscoveryActor : FSM<ClusterDiscoveryActorState, IImmutableSet<Address>>
     {
         private readonly IServiceDiscoveryClient _client;
+        private readonly Cluster _cluster;
         private readonly IActorRef _seedList;
 
-        public ClusterDiscoveryActor(IServiceDiscoveryClient client, ClusterDiscoverySettings settings)
+        public ClusterDiscoveryActor(IServiceDiscoveryClient client, Cluster cluster, ClusterDiscoverySettings settings)
         {
             _client = client;
+            _cluster = cluster;
             _seedList = Context.ActorOf(Props.Create(() => new SeedListActor(client, settings)));
             When(ClusterDiscoveryActorState.Initial, @event=>
             {

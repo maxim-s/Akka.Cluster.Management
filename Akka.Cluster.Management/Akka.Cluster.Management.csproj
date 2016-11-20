@@ -73,6 +73,7 @@
     <Reference Include="System.Xml" />
   </ItemGroup>
   <ItemGroup>
+    <Compile Include="ClusterDiscovery.cs" />
     <Compile Include="ClusterDiscoveryActor.cs" />
     <Compile Include="ClusterDiscoveryActorState.cs" />
     <Compile Include="ClusterDiscoverySettings.cs" />
@@ -98,6 +99,10 @@
     <None Include="packages.config" />
   </ItemGroup>
   <ItemGroup>
+    <ProjectReference Include="..\Akka.Cluster.Management.Consul\Akka.Cluster.Management.Consul.csproj">
+      <Project>{814D0B92-5418-4A62-A172-A9A5804D5564}</Project>
+      <Name>Akka.Cluster.Management.Consul</Name>
+    </ProjectReference>
     <ProjectReference Include="..\Akka.Cluster.Management.ServiceDiscovery\Akka.Cluster.Management.ServiceDiscovery.csproj">
       <Project>{6D8E7605-B993-4711-A475-C3B597C9D000}</Project>
       <Name>Akka.Cluster.Management.ServiceDiscovery</Name>

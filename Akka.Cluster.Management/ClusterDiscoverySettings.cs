@@ -1,4 +1,5 @@
 using System;
+using Akka.Configuration;
 
 namespace Akka.Cluster.Management
 {
@@ -23,5 +24,10 @@ namespace Akka.Cluster.Management
         public TimeSpan SeedsJoinTimeout { get; set; }
         public TimeSpan SeedsFetchTimeout { get; set; }
         public string BasePath { get; set; }
+
+        public static ClusterDiscoverySettings Load(Config config)
+        {
+            throw new NotImplementedException();
+        }
     }
 }
