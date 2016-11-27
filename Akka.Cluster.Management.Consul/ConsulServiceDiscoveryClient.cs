@@ -14,9 +14,18 @@ namespace Akka.Cluster.Management.Consul
     public class ConsulServiceDiscoveryClient : IServiceDiscoveryClient
     {
         private readonly ConsulClient _consul;
-        public ConsulServiceDiscoveryClient()
+        public ConsulServiceDiscoveryClient(Configuration config = null)
         {
-            _consul = new ConsulClient();
+            _consul = config == null
+                ? new ConsulClient()
+                : new ConsulClient(configuration =>
+                {
+                    configuration.HttpAuth = config.HttpAuth;
+                    configuration.Address = config.Address;
+                    configuration.Datacenter = config.Datacenter;
+                    configuration.Token = config.Token;
+                    configuration.WaitTime = config.WaitTime;
+                });
         }
 
         public Task<GetNodesResponse> Get(string seedsPath)
@@ -26,49 +35,49 @@ namespace Akka.Cluster.Management.Consul
                 if (task.Result.StatusCode == HttpStatusCode.OK)
                 {
                     var nodes = task.Result.Response.ToDictionary(pair => pair.Key, pair => Convert(pair.Value));
-                    return new GetNodesResponse(nodes) {Success = true};
-                } 
-                return new GetNodesResponse(null) { Success = false, Reason = string.Format("Failed with status {0}", task.Result.StatusCode)};
+                    return new GetNodesResponse(nodes) { Success = true };
+                }
+                return new GetNodesResponse(null) { Success = false, Reason = string.Format("Failed with status {0}", task.Result.StatusCode) };
             });
         }
 
         public Task<CreateNodeResponse> Create(string seedsPath, string member, TimeSpan? ttl = null)
         {
             var key = CreateKey(seedsPath, member);
-            return _consul.KV.Put(new KVPair(key) {Value = Convert(member)}).ContinueWith(task =>
-            {
-                if (task.Result.StatusCode == HttpStatusCode.OK)
-                {
-                    return new CreateNodeResponse(string.Empty)
-                    {
-                        Key = member,
-                        Success = true
-                    };
-                }
-                else
-                {
-                    return new CreateNodeResponse(string.Empty) { Key = member, Success = false, Reason = string.Format("failed to add member {0} with seeds path {1}",member,seedsPath) };
-                }
-                
-            });
-            
+            return _consul.KV.Put(new KVPair(key) { Value = Convert(member) }).ContinueWith(task =>
+              {
+                  if (task.Result.StatusCode == HttpStatusCode.OK)
+                  {
+                      return new CreateNodeResponse(string.Empty)
+                      {
+                          Key = member,
+                          Success = true
+                      };
+                  }
+                  else
+                  {
+                      return new CreateNodeResponse(string.Empty) { Key = member, Success = false, Reason = string.Format("failed to add member {0} with seeds path {1}", member, seedsPath) };
+                  }
+
+              });
+
         }
 
         public Task<DeleteNodeResponse> Delete(string seedsPath, string member = null, bool recursive = false)
         {
             var key = CreateKey(seedsPath, member);
             var deleteTask = recursive ? _consul.KV.DeleteTree(seedsPath) : _consul.KV.Delete(key);
-                return deleteTask.ContinueWith(task =>
+            return deleteTask.ContinueWith(task =>
+            {
+                if (task.Result.StatusCode == HttpStatusCode.OK)
                 {
-                    if (task.Result.StatusCode == HttpStatusCode.OK)
-                    {
-                        return new DeleteNodeResponse(key) {Success = true};
-                    }
-                    else
-                    {
-                        return new DeleteNodeResponse(key) { Success = false, Reason = "Can't delete  lock"};
-                    }
-                });
+                    return new DeleteNodeResponse(key) { Success = true };
+                }
+                else
+                {
+                    return new DeleteNodeResponse(key) { Success = false, Reason = "Can't delete  lock" };
+                }
+            });
         }
 
         public void Start(string path, TimeSpan? ttl = null)
@@ -112,7 +121,7 @@ namespace Akka.Cluster.Management.Consul
                         {
                             if (acq.Result.StatusCode == HttpStatusCode.OK)
                             {
-                                return new SetLeaderResponse(response.LeaderPath, response.Address) {Success = true};
+                                return new SetLeaderResponse(response.LeaderPath, response.Address) { Success = true };
                             }
                             else
                             {
@@ -149,10 +158,10 @@ namespace Akka.Cluster.Management.Consul
         {
             return string.Format("{0}/{1}", seedsPath, member);
         }
-        
+
         private class CreateSessionResponse
         {
-            public CreateSessionResponse(string session, string leaderPath, string address, bool success,string reason)
+            public CreateSessionResponse(string session, string leaderPath, string address, bool success, string reason)
             {
                 Session = session;
                 LeaderPath = leaderPath;
