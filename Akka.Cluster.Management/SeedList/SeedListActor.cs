@@ -1,12 +1,9 @@
 using System;
-using System.Collections.Generic;
 using System.Collections.Immutable;
-using System.Diagnostics.Eventing.Reader;
 using System.Linq;
 using System.Threading.Tasks;
 using Akka.Actor;
 using Akka.Cluster.Management.ServiceDiscovery;
-using Akka.Dispatch;
 using Akka.Event;
 
 namespace Akka.Cluster.Management.SeedList
@@ -76,34 +73,24 @@ namespace Akka.Cluster.Management.SeedList
                     }
                 }
 
-                var error = @event.FsmEvent as ServiceDiscovery.Error;
-                if (error != null && error.ErrorType == ErrorType.KeyNotFound)
-                {
-                    foreach (var member in state.Members)
-                    {
-                        Self.Tell(new MemberAdded(member));
-                    }
+                //var error = @event.FsmEvent as ServiceDiscovery.Error;
+                //if (error != null && error.ErrorType == ErrorType.KeyNotFound)
+                //{
+                //    foreach (var member in state.Members)
+                //    {
+                //        Self.Tell(new MemberAdded(member));
+                //    }
 
-                    Stash.UnstashAll();
-                    return
-                        GoTo(SeedListState.AwaitingCommand)
-                            .Using(new AwaitingCommandData(new Dictionary<string, string>()));
-                }
+                //    Stash.UnstashAll();
+                //    return
+                //        GoTo(SeedListState.AwaitingCommand)
+                //            .Using(new AwaitingCommandData(new Dictionary<string, string>()));
+                //}
 
-                if (error != null && state != null)
+                var response = @event.FsmEvent as Response;
+                if (response != null && !response.Success)
                 {
-                    // TODO: add reason to log
-                    _log.Warning("Service discovery error while fetching error while fetching registered seeds");
-                    RetryMessage(new InitialState(state.Members));
-                    return GoTo(SeedListState.AwaitingInitialState)
-                            .Using(new AwaitingInitialStateData());
-                }
-
-                var failure = @event.FsmEvent as Status.Failure;
-                if (failure != null && state != null)
-                {
-                    // TODO: add reason to log
-                    _log.Warning("Service discovery error while fetching error while fetching registered seeds");
+                    _log.Warning($"Service discovery error while fetching error while fetching registered seeds: {response.Reason}");
                     RetryMessage(new InitialState(state.Members));
                     Stash.UnstashAll();
                     return GoTo(SeedListState.AwaitingInitialState)
@@ -180,20 +167,10 @@ namespace Akka.Cluster.Management.SeedList
                     
                 }
 
-                var error = @event.FsmEvent as ServiceDiscovery.Error;
-                if (error != null && state != null)
+                var nodeResponse = @event.FsmEvent as Response;
+                if (nodeResponse != null && !nodeResponse.Success)
                 {
-                    // TODO: _log warning 
-                    RetryMessage(state.Command);
-                    Stash.UnstashAll();
-                    return GoTo(SeedListState.AwaitingCommand)
-                            .Using(new AwaitingCommandData(state.AdressMapping));
-                }
-
-                var failure = @event.FsmEvent as Failure;
-                if (failure != null && state != null)
-                {
-                    // TODO: _log warning 
+                    _log.Warning($"Service discovery error while fetching registered seeds: {nodeResponse.Reason}");
                     RetryMessage(state.Command);
                     Stash.UnstashAll();
                     return GoTo(SeedListState.AwaitingCommand)
