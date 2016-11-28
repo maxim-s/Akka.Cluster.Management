@@ -146,7 +146,7 @@ namespace Akka.Cluster.Management.Tests
             seedList.Tell(new InitialState(ImmutableHashSet<string>.Empty));
             ExpectTransitionTo(SeedListState.AwaitingRegisteredSeeds);
 
-            seedsErrorTask.SetException(new Exception());
+            seedsErrorTask.SetResult(new GetNodesResponse(new Dictionary<string, string>()) {Success = false, Reason = "error"});
             ExpectTransitionTo(SeedListState.AwaitingInitialState);
             ExpectTransitionTo(SeedListState.AwaitingRegisteredSeeds);
 
@@ -181,7 +181,7 @@ namespace Akka.Cluster.Management.Tests
             ExpectTransitionTo(SeedListState.AwaitingReply);
 
             // Check there if Success is true.
-            //createTaskError.failure(failure);
+            createTaskError.SetResult(new CreateNodeResponse(string.Empty) {Success = false, Reason = "error"});
             ExpectTransitionTo(SeedListState.AwaitingCommand);
             ExpectTransitionTo(SeedListState.AwaitingReply);
 
@@ -191,7 +191,7 @@ namespace Akka.Cluster.Management.Tests
             seedList.Tell(new MemberRemoved(Addr1));
             ExpectTransitionTo(SeedListState.AwaitingReply);
 
-            //deleteTaskError.failure(failure);
+            deleteTaskError.SetResult(new DeleteNodeResponse(string.Empty) { Success = false, Reason = "error" });
             ExpectTransitionTo(SeedListState.AwaitingCommand);
             ExpectTransitionTo(SeedListState.AwaitingReply);
 
