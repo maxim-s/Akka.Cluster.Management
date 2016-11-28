@@ -1,8 +1,7 @@
 ﻿using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
+using System.Diagnostics;
+using System.Threading;
+using Akka.Actor.Internal;
 using Akka.Cluster.Management.Consul;
 using Akka.Cluster.Management.ServiceDiscovery;
 using Akka.Cluster.TestKit;
@@ -11,7 +10,6 @@ using Akka.Remote.TestKit;
 
 namespace Akka.Cluster.Management.Tests.MultiNode
 {
-
     public class PrimarySeedElectionMultiNodeConfig : MultiNodeConfig
     {
         private readonly RoleName _first;
@@ -24,11 +22,24 @@ namespace Akka.Cluster.Management.Tests.MultiNode
             _second = Role("second");
             _third = Role("third");
             CommonConfig = DebugConfig(false)
-                .WithFallback(ConfigurationFactory.ParseString(@"                
-                akka.cluster.discovery.etcd.timeouts.etcdRetry = 500 ms
-                akka.loglevel = INFO")).WithFallback(MultiNodeClusterSpec.ClusterConfig());
-
+                .WithFallback(ConfigurationFactory.ParseString(@"                     
+                akka.cluster.discovery.timeouts.retry = 500 ms
+                akka.cluster.discovery.leaderPath = ""leader""
+                akka.cluster.discovery.seedsPath = ""seedsPath""
+                akka.loglevel = DEBUG")).WithFallback(MultiNodeClusterSpec.ClusterConfig());
         }
+    }
+
+    public class PrimarySeedElectionMultiJvmNode1 : PrimarySeedElectionSpec
+    {
+    }
+
+    public class PrimarySeedElectionMultiJvmNode2 : PrimarySeedElectionSpec
+    {
+    }
+
+    public class PrimarySeedElectionMultiJvmNode3 : PrimarySeedElectionSpec
+    {
     }
 
     public abstract class PrimarySeedElectionSpec : MultiNodeClusterSpec
@@ -47,17 +58,16 @@ namespace Akka.Cluster.Management.Tests.MultiNode
         [MultiNodeFact]
         public void ClusterDiscoveryExtension_should_bootstrap_a_cluster()
         {
-            //MultiNodeSpecBeforeAll();
-            //var discoverySettings = ClusterDiscoverySettings.Load(Sys.Settings.Config);
-            //var httpClientSettings = new ClientConnectionSettings(Sys).WithConnectingTimeout(discoverySettings.ConnectionTimeout)
-            //  .WithIdleTimeout(discoverySettings.RequestTimeout)
-
-            //IServiceDiscoveryClient client = new ConsulServiceDiscoveryClient();
-
-            //Await.ready(etcd.delete("/akka", recursive = true), 3.seconds)
-
+            var discoverySettings = ClusterDiscoverySettings.Load(Sys.Settings.Config);
+            IServiceDiscoveryClient client = new ConsulServiceDiscoveryClient();
+            Cluster.Get(Sys).Subscribe(TestActor, typeof (ClusterEvent.MemberUp));
+            ExpectMsg<ClusterEvent.CurrentClusterState>();
+            Thread.Sleep(1000);
+            //Debugger.Launch();
+            new ClusterDiscovery((ActorSystemImpl) Sys).Start();
+            ExpectMsg<ClusterEvent.MemberUp>(TimeSpan.FromSeconds(10));
+            ExpectMsg<ClusterEvent.MemberUp>(TimeSpan.FromSeconds(10));
+            ExpectMsg<ClusterEvent.MemberUp>(TimeSpan.FromSeconds(10));
         }
-
     }
-
 }
