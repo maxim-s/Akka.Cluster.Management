@@ -59,4 +59,28 @@ namespace Akka.Cluster.Management.ServiceDiscovery
         public string Address { get; private set; }
         public string LeaderPath { get; private set; }
     }
+
+    public class StartResponse : Response
+    {
+        public StartResponse(string address)
+        {
+            Address = address;
+            Success = true;
+        }
+
+        public string Address { get; private set; }
+    }
+
+    public class NodeExistResponse : Response
+    {
+        public NodeExistResponse(string path, string address)
+        {
+            Path = path;
+            Address = address;
+            Success = true;
+        }
+
+        public string Path { get; private set; }
+        public string Address { get; private set; }
+    }
 }

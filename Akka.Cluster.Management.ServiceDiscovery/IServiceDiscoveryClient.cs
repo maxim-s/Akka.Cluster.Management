@@ -8,7 +8,7 @@ namespace Akka.Cluster.Management.ServiceDiscovery
         Task<GetNodesResponse> Get(string key);
         Task<CreateNodeResponse> Create(string seedsPath, string member, TimeSpan? ttl =null);
         Task<DeleteNodeResponse> Delete(string seedsPath,string member, bool recursive = false);
-        void Start(string basePath,TimeSpan? ttl = null);
+        Task<StartResponse> Start(string basePath,TimeSpan? ttl = null);
         Task<SetLeaderResponse> SetLeader(string leaderPath, string address, TimeSpan leaderEntryTtl);
     }
 }

@@ -80,9 +80,35 @@ namespace Akka.Cluster.Management.Consul
             });
         }
 
-        public void Start(string path, TimeSpan? ttl = null)
+        public Task<StartResponse> Start(string path, TimeSpan? ttl = null)
         {
-            _consul.KV.Put(new KVPair(path));
+            return _consul.KV.Put(new KVPair(path)).ContinueWith(task =>
+            {
+                if (!task.IsFaulted && task.Result.StatusCode == HttpStatusCode.OK)
+                {
+                    return new StartResponse(path);
+                }
+                else
+                {
+                    return new StartResponse(path)
+                    {
+                        Success = false,
+                        Reason = string.Format("can't create {0}", path),
+                    };
+                }
+            });
+        }
+
+        public Task<NodeExistResponse> NodeExist(string leaderPath, string address)
+        {
+            return _consul.Session.List().ContinueWith(task =>
+            {
+                if (task.Result.StatusCode == HttpStatusCode.OK && task.Result.Response != null && task.Result.Response.Any(s=> s.Name == leaderPath))
+                {
+                    return new NodeExistResponse(leaderPath, address);
+                }
+                return new NodeExistResponse(leaderPath, address) {Success = false};
+            });
         }
 
         public Task<SetLeaderResponse> SetLeader(string leaderPath, string address, TimeSpan leaderEntryTtl)
