@@ -30,7 +30,7 @@ namespace Akka.Cluster.Management.Tests
             var refreshTask1 = new TaskCompletionSource<SetLeaderResponse>();
             var refreshTask2 = new TaskCompletionSource<SetLeaderResponse>();
             ServiceDiscoveryClientMock.SetupSequence(
-                s => s.SetLeader(Settings.LeaderPath, Addr, Settings.LeaderEntryTTL))
+                s => s.SetLeader(Settings.LeaderPath, Addr, Settings.LeaderEntryTTL, It.IsAny<bool>() ))
                 .Returns(refreshTask1.Task)
                 .Returns(refreshTask2.Task);
 
@@ -51,7 +51,7 @@ namespace Akka.Cluster.Management.Tests
             var refreshTask1 = new TaskCompletionSource<SetLeaderResponse>();
             var refreshTask2 = new TaskCompletionSource<SetLeaderResponse>();
             ServiceDiscoveryClientMock.SetupSequence(
-                s => s.SetLeader(Settings.LeaderPath, Addr, Settings.LeaderEntryTTL))
+                s => s.SetLeader(Settings.LeaderPath, Addr, Settings.LeaderEntryTTL, It.IsAny<bool>()))
                 .Returns(refreshTask1.Task)
                 .Returns(refreshTask2.Task);
 
@@ -81,11 +81,11 @@ namespace Akka.Cluster.Management.Tests
             var refreshTask2 = new TaskCompletionSource<SetLeaderResponse>();
             var recreateTask = new TaskCompletionSource<SetLeaderResponse>();
             ServiceDiscoveryClientMock.SetupSequence(
-                s => s.SetLeader(Settings.LeaderPath, Addr, Settings.LeaderEntryTTL))
+                s => s.SetLeader(Settings.LeaderPath, Addr, Settings.LeaderEntryTTL, It.IsAny<bool>()))
                 .Returns(refreshTask1.Task)
                 .Returns(refreshTask2.Task);
             ServiceDiscoveryClientMock.Setup(
-                s => s.SetLeader(Settings.LeaderPath, Addr, Settings.LeaderEntryTTL))
+                s => s.SetLeader(Settings.LeaderPath, Addr, Settings.LeaderEntryTTL, It.IsAny<bool>()))
                 .Returns(recreateTask.Task);
 
             var leaderActor = Init();
@@ -110,11 +110,11 @@ namespace Akka.Cluster.Management.Tests
             var refreshTask2 = new TaskCompletionSource<SetLeaderResponse>();
             var recreateTask = new TaskCompletionSource<SetLeaderResponse>();
             ServiceDiscoveryClientMock.SetupSequence(
-                s => s.SetLeader(Settings.LeaderPath, Addr, Settings.LeaderEntryTTL))
+                s => s.SetLeader(Settings.LeaderPath, Addr, Settings.LeaderEntryTTL, It.IsAny<bool>()))
                 .Returns(refreshTask1.Task)
                 .Returns(refreshTask2.Task);
             ServiceDiscoveryClientMock.Setup(
-                s => s.SetLeader(Settings.LeaderPath, Addr, Settings.LeaderEntryTTL))
+                s => s.SetLeader(Settings.LeaderPath, Addr, Settings.LeaderEntryTTL, It.IsAny<bool>()))
                 .Returns(recreateTask.Task);
 
             var leaderActor = Init();

@@ -7,6 +7,7 @@ using System.Threading.Tasks;
 using Akka.Actor;
 using Akka.Cluster.Management.SeedList;
 using Akka.Cluster.Management.ServiceDiscovery;
+using Akka.Event;
 
 namespace Akka.Cluster.Management
 {
@@ -14,12 +15,16 @@ namespace Akka.Cluster.Management
     {
         private readonly IServiceDiscoveryClient _client;
         private readonly Cluster _cluster;
+        private readonly ClusterDiscoverySettings _settings;
         private readonly IActorRef _seedList;
+        private readonly ILoggingAdapter _log;
 
         public ClusterDiscoveryActor(IServiceDiscoveryClient client, Cluster cluster, ClusterDiscoverySettings settings)
         {
             _client = client;
             _cluster = cluster;
+            _settings = settings;
+            _log = Context.GetLogger();
             _seedList = Context.ActorOf(Props.Create(() => new SeedListActor(client, settings)));
             When(ClusterDiscoveryActorState.Initial, @event=>
             {
@@ -28,18 +33,32 @@ namespace Akka.Cluster.Management
                     _client.Start(settings.BasePath); 
                     return Stay();
                 }
-                if (@event.FsmEvent is Election || @event.FsmEvent is Error)
+                if (@event.FsmEvent is Response) 
                 {
                     return GoTo(ClusterDiscoveryActorState.Election);
                 }
                 return null;
             } );
 
+            OnTransition((state, nextState) =>
+            {
+                if (nextState == ClusterDiscoveryActorState.Election)
+                {
+                    _log.Info("starting election");
+                    ElectionBid();
+                }
+            });
+
+
             When(ClusterDiscoveryActorState.Election, @event =>
             {
-                if (@event.FsmEvent is Election)
+                if (@event.FsmEvent is SetLeaderResponse)
                 {
-                    return GoTo(ClusterDiscoveryActorState.Leader);
+                    var resp = (SetLeaderResponse) @event.FsmEvent;
+                    if (resp.Success)
+                    {
+                        return GoTo(ClusterDiscoveryActorState.Leader);
+                    }
                 }
                 if (@event.FsmEvent is Error)
                 {
@@ -47,6 +66,25 @@ namespace Akka.Cluster.Management
                 }
                 return null;
             });
+
+  //          when(Election) {
+  //  case Event(_: EtcdResponse, _) ⇒
+  //    goto(Leader)
+  //  case Event(EtcdError(EtcdError.NodeExist, _, _, _), _) ⇒
+  //    goto(Follower)
+  //  case Event(err @ EtcdError, _) ⇒
+  //    log.error(s"Election error: $err")
+  //    setTimer("retry", Retry, settings.etcdRetryDelay, false)
+  //    stay()
+  //  case Event(Status.Failure(t), _) ⇒
+  //    log.error(t, "Election error")
+  //    setTimer("retry", Retry, settings.etcdRetryDelay, false)
+  //    stay()
+  //  case Event(Retry, _) ⇒
+  //    log.warning("retrying")
+  //    electionBid()
+  //    stay()
+  //}
 
             When(ClusterDiscoveryActorState.Leader, @event =>
             {
@@ -88,6 +126,14 @@ namespace Akka.Cluster.Management
                 }
                 return null;
             });
+            StartWith(ClusterDiscoveryActorState.Initial, ImmutableHashSet<Address>.Empty);
+            Initialize();
+        }
+
+        private void ElectionBid()
+        {
+            _client.SetLeader(_settings.LeaderPath, _cluster.SelfAddress.ToString(), _settings.LeaderEntryTTL, false)
+                .PipeTo(Self);
         }
     }
 }

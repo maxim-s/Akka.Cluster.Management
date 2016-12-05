@@ -67,10 +67,27 @@ namespace Akka.Cluster.Management.Consul.Tests
         [Fact]
         public async void Should_set_leader()
         {
-            var resp = await _client.SetLeader("leader/path", "address", TimeSpan.FromSeconds(10));
+            var resp = await _client.SetLeader("leader/path", "address", TimeSpan.FromSeconds(10) ,false);
             Assert.True(resp.Success);
             Assert.Equal("address", resp.Address);
             Assert.Equal("leader/path", resp.LeaderPath);
+        }
+        [Fact]
+        public async void Should_fail_to_set_the_same_leader()
+        {
+            var resp1 = await _client.SetLeader("leader/path", "address", TimeSpan.FromSeconds(10), false);
+            var resp2 = await _client.SetLeader("leader/path", "address", TimeSpan.FromSeconds(10), false);
+            Assert.True(resp1.Success);
+            Assert.False(resp2.Success);
+        }
+
+        [Fact]
+        public async void Should_refresh_leader()
+        {
+            var resp1 = await _client.SetLeader("leader/path", "address", TimeSpan.FromSeconds(10), false);
+            var resp2 = await _client.SetLeader("leader/path", "address", TimeSpan.FromSeconds(10), true);
+            Assert.True(resp1.Success);
+            Assert.True(resp2.Success);
         }
     }
 }

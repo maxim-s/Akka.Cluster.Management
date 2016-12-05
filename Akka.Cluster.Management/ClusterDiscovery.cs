@@ -19,9 +19,8 @@ namespace Akka.Cluster.Management
         {
             System = system;
             DiscoverySettings = ClusterDiscoverySettings.Load(System.Settings.Config);
-            //TODO: read from settings and create factory
             IServiceDiscoveryClient serviceDiscovery = new ConsulServiceDiscoveryClient();
-            var cluster = new Cluster(System);
+            var cluster = Cluster.Get(System);
             Discovery =
                 System.ActorOf(
                     Props.Create(() => new ClusterDiscoveryActor(serviceDiscovery, cluster, DiscoverySettings)));

@@ -43,6 +43,7 @@ namespace Akka.Cluster.Management.Consul
 
         public Task<CreateNodeResponse> Create(string seedsPath, string member, TimeSpan? ttl = null)
         {
+
             var key = CreateKey(seedsPath, member);
             return _consul.KV.Put(new KVPair(key) { Value = Convert(member) }).ContinueWith(task =>
               {
@@ -98,23 +99,19 @@ namespace Akka.Cluster.Management.Consul
                 }
             });
         }
-
-        public Task<NodeExistResponse> NodeExist(string leaderPath, string address)
+        public async Task<SetLeaderResponse> SetLeader(string leaderPath, string address, TimeSpan leaderEntryTtl, bool refresh)
         {
-            return _consul.Session.List().ContinueWith(task =>
+            var currentLeader = await _consul.KV.Get(leaderPath);
+            if (currentLeader.Response != null && Convert(currentLeader.Response.Value) == address && ! string.IsNullOrEmpty(currentLeader.Response.Session))
             {
-                if (task.Result.StatusCode == HttpStatusCode.OK && task.Result.Response != null && task.Result.Response.Any(s=> s.Name == leaderPath))
+                if (!refresh)
                 {
-                    return new NodeExistResponse(leaderPath, address);
+                    return new SetLeaderResponse(leaderPath, address) {Success = false};
                 }
-                return new NodeExistResponse(leaderPath, address) {Success = false};
-            });
-        }
-
-        public Task<SetLeaderResponse> SetLeader(string leaderPath, string address, TimeSpan leaderEntryTtl)
-        {
+                await _consul.KV.Release(currentLeader.Response);
+            }
             var sessionTask = CreateSession(leaderPath, address, leaderEntryTtl);
-            return Acquire(sessionTask);
+            return await Acquire(sessionTask);
         }
 
         private Task<CreateSessionResponse> CreateSession(string leaderPath, string address, TimeSpan leaderEntryTtl)
@@ -132,12 +129,12 @@ namespace Akka.Cluster.Management.Consul
             });
         }
 
-        private Task<SetLeaderResponse> Acquire(Task<CreateSessionResponse> createSessionTask)
+        private async Task<SetLeaderResponse> Acquire(Task<CreateSessionResponse> createSessionTask)
         {
             if (createSessionTask.Result.Success)
             {
                 var response = createSessionTask.Result;
-                return _consul.KV.Acquire(new KVPair(response.LeaderPath)
+                return await _consul.KV.Acquire(new KVPair(response.LeaderPath)
                 {
                     Session = response.Session,
                     Value = Convert(response.Address)
@@ -160,7 +157,7 @@ namespace Akka.Cluster.Management.Consul
                             }
                         });
             }
-            return createSessionTask.ContinueWith(t =>
+            return await createSessionTask.ContinueWith(t =>
             {
                 return new SetLeaderResponse(t.Result.LeaderPath, t.Result.Address)
                 {
