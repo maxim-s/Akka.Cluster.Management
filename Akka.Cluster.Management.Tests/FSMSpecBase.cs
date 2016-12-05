@@ -18,7 +18,7 @@ namespace Akka.Cluster.Management.Tests
         protected FSMSpecBase() 
         {
             // TODO: Config settings
-            Settings = new ClusterDiscoverySettings(string.Empty, string.Empty, TimeSpan.MaxValue, TimeSpan.FromMilliseconds(100),
+            Settings = new ClusterDiscoverySettings(string.Empty, string.Empty, TimeSpan.FromMilliseconds(100), TimeSpan.FromMilliseconds(100),
                 TimeSpan.MaxValue, TimeSpan.MaxValue, string.Empty, 0, string.Empty);
             StateProbe = CreateTestProbe(Sys);
             TransitionTimeout = TimeSpan.FromSeconds(10);

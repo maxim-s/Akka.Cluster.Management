@@ -30,7 +30,7 @@ namespace Akka.Cluster.Management.Tests
             var refreshTask1 = new TaskCompletionSource<SetLeaderResponse>();
             var refreshTask2 = new TaskCompletionSource<SetLeaderResponse>();
             ServiceDiscoveryClientMock.SetupSequence(
-                s => s.SetLeader(Settings.LeaderPath, Addr, Settings.LeaderEntryTTL, It.IsAny<bool>() ))
+                s => s.SetLeader(Settings.LeaderPath, Addr, Settings.LeaderEntryTTL, true))
                 .Returns(refreshTask1.Task)
                 .Returns(refreshTask2.Task);
 
@@ -46,12 +46,12 @@ namespace Akka.Cluster.Management.Tests
         }
 
         [Fact]
-        private void it_should_retry_opreations_failed_because_of_service_discovery_client_internal_errors()
+        private void it_should_retry_operations_failed_because_of_service_discovery_client_internal_errors()
         {
             var refreshTask1 = new TaskCompletionSource<SetLeaderResponse>();
             var refreshTask2 = new TaskCompletionSource<SetLeaderResponse>();
             ServiceDiscoveryClientMock.SetupSequence(
-                s => s.SetLeader(Settings.LeaderPath, Addr, Settings.LeaderEntryTTL, It.IsAny<bool>()))
+                s => s.SetLeader(Settings.LeaderPath, Addr, Settings.LeaderEntryTTL, true))
                 .Returns(refreshTask1.Task)
                 .Returns(refreshTask2.Task);
 

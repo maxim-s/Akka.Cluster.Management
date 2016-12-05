@@ -79,7 +79,7 @@ namespace Akka.Cluster.Management.LeaderEntry
         /// </summary>
         private void CreateLeaderEntry()
         {
-            _client.SetLeader(_settings.LeaderPath, _address, _settings.LeaderEntryTTL, true).PipeTo(Self);
+            _client.SetLeader(_settings.LeaderPath, _address, _settings.LeaderEntryTTL, false).PipeTo(Self);
         }
 
         /// <summary>
@@ -89,7 +89,7 @@ namespace Akka.Cluster.Management.LeaderEntry
         /// </summary>
         private void RefreshLeaderEntry()
         {
-            _client.SetLeader(_settings.LeaderPath, _address, _settings.LeaderEntryTTL, false).PipeTo(Self);
+            _client.SetLeader(_settings.LeaderPath, _address, _settings.LeaderEntryTTL, true).PipeTo(Self);
         }
     }
 }
